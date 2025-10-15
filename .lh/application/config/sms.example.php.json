@@ -1,0 +1,18 @@
+{
+    "sourceFile": "application/config/sms.example.php",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1759927810112,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1759927810112,
+            "name": "Commit-0",
+            "content": "<?php\r\n\r\ndefined('BASEPATH') OR exit('No direct script access allowed');\r\n\r\n/*\r\n|--------------------------------------------------------------------------\r\n| SMS Configuration\r\n|--------------------------------------------------------------------------\r\n|\r\n| SMS servisi için gerekli ayarlar\r\n|\r\n*/\r\n\r\n$config['sms_api_url'] = 'http://api3.mobilisim.com/';\r\n$config['sms_username'] = 'your_sms_username';\r\n$config['sms_password'] = 'your_sms_password';\r\n$config['sms_originator'] = 'your_sender_name';\r\n$config['sms_action'] = '12';\r\n\r\n/*\r\n|--------------------------------------------------------------------------\r\n| SMS Default Settings\r\n|--------------------------------------------------------------------------\r\n*/\r\n$config['sms_encoding'] = 'UTF-8';\r\n$config['sms_timeout'] = 30; // saniye"
+        }
+    ]
+}

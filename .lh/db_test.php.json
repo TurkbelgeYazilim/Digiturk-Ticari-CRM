@@ -1,0 +1,18 @@
+{
+    "sourceFile": "db_test.php",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1755584922758,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1755584922758,
+            "name": "Commit-0",
+            "content": "<?php\r\n// Simple database connection test\r\nheader('Content-Type: application/json');\r\n\r\necho \"PHP Version: \" . phpversion() . \"\\n\";\r\necho \"MySQL extension loaded: \" . (extension_loaded('mysql') ? 'Yes' : 'No') . \"\\n\";\r\necho \"MySQLi extension loaded: \" . (extension_loaded('mysqli') ? 'Yes' : 'No') . \"\\n\";\r\necho \"PDO extension loaded: \" . (extension_loaded('pdo') ? 'Yes' : 'No') . \"\\n\";\r\necho \"PDO MySQL driver loaded: \" . (extension_loaded('pdo_mysql') ? 'Yes' : 'No') . \"\\n\";\r\n\r\ntry {\r\n    $host = 'localhost';\r\n    $dbname = 'ilekasoft_crmdb';\r\n    $username = 'ilekasoft_crmuser';\r\n    $password = 'KaleW356!';\r\n    \r\n    echo \"\\nTesting MySQLi connection...\\n\";\r\n    $mysqli = new mysqli($host, $username, $password, $dbname);\r\n    \r\n    if ($mysqli->connect_error) {\r\n        echo \"MySQLi Connection failed: \" . $mysqli->connect_error . \"\\n\";\r\n    } else {\r\n        echo \"MySQLi Connection successful!\\n\";\r\n        echo \"MySQL Server info: \" . $mysqli->server_info . \"\\n\";\r\n        \r\n        // Test a simple query\r\n        $result = $mysqli->query(\"SELECT COUNT(*) as count FROM satisFaturasiStok LIMIT 1\");\r\n        if ($result) {\r\n            $row = $result->fetch_assoc();\r\n            echo \"Test query successful - satisFaturasiStok table has \" . $row['count'] . \" records\\n\";\r\n        } else {\r\n            echo \"Test query failed: \" . $mysqli->error . \"\\n\";\r\n        }\r\n        $mysqli->close();\r\n    }\r\n    \r\n    echo \"\\nTesting PDO connection...\\n\";\r\n    $dsn = \"mysql:host=$host;dbname=$dbname;charset=utf8mb4\";\r\n    $pdo = new PDO($dsn, $username, $password, [\r\n        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION\r\n    ]);\r\n    echo \"PDO Connection successful!\\n\";\r\n    \r\n    $stmt = $pdo->query(\"SELECT COUNT(*) as count FROM satisFaturasiStok LIMIT 1\");\r\n    $row = $stmt->fetch();\r\n    echo \"PDO Test query successful - satisFaturasiStok table has \" . $row['count'] . \" records\\n\";\r\n    \r\n} catch (Exception $e) {\r\n    echo \"Error: \" . $e->getMessage() . \"\\n\";\r\n}\r\n?>\r\n"
+        }
+    ]
+}

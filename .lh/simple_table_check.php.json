@@ -1,0 +1,18 @@
+{
+    "sourceFile": "simple_table_check.php",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1754741006186,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1754741006186,
+            "name": "Commit-0",
+            "content": "<?php\r\n/**\r\n * Basit Tablo Kontrolü - voip_iris_rapor tablosunun var olup olmadığını kontrol eder\r\n */\r\n\r\ntry {\r\n    // Database bağlantısı\r\n    $dsn = \"mysql:host=localhost;dbname=ilekasoft_crmdb;charset=utf8mb4\";\r\n    $pdo = new PDO($dsn, 'ilekasoft_crmuser', 'KaleW356!');\r\n    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);\r\n\r\n    echo \"<h2>VoIP İris Rapor Tablo Durumu</h2>\";\r\n\r\n    // Tablo var mı kontrol et\r\n    $checkTable = \"SHOW TABLES LIKE 'voip_iris_rapor'\";\r\n    $stmt = $pdo->query($checkTable);\r\n    $tableExists = $stmt->rowCount() > 0;\r\n\r\n    if ($tableExists) {\r\n        echo \"<p style='color: green;'>✓ voip_iris_rapor tablosu mevcut</p>\";\r\n        \r\n        // Kayıt sayısını göster\r\n        $countQuery = \"SELECT COUNT(*) as total FROM voip_iris_rapor\";\r\n        $stmt = $pdo->query($countQuery);\r\n        $count = $stmt->fetch(PDO::FETCH_ASSOC);\r\n        echo \"<p><strong>Toplam Kayıt:</strong> \" . number_format($count['total']) . \"</p>\";\r\n\r\n        // İlk 5 kaydı göster\r\n        $sampleQuery = \"SELECT talep_id, talep_turu, dt_musteri_no, satis_durumu, kayit_tarihi FROM voip_iris_rapor ORDER BY kayit_tarihi DESC LIMIT 5\";\r\n        $stmt = $pdo->query($sampleQuery);\r\n        $samples = $stmt->fetchAll(PDO::FETCH_ASSOC);\r\n        \r\n        if (!empty($samples)) {\r\n            echo \"<h3>Örnek Kayıtlar:</h3>\";\r\n            echo \"<table border='1' style='border-collapse: collapse; width: 100%;'>\";\r\n            echo \"<tr><th>Talep ID</th><th>Talep Türü</th><th>DT Müşteri No</th><th>Satış Durumu</th><th>Kayıt Tarihi</th></tr>\";\r\n            foreach ($samples as $sample) {\r\n                echo \"<tr>\";\r\n                echo \"<td>\" . htmlspecialchars($sample['talep_id']) . \"</td>\";\r\n                echo \"<td>\" . htmlspecialchars($sample['talep_turu']) . \"</td>\";\r\n                echo \"<td>\" . htmlspecialchars($sample['dt_musteri_no']) . \"</td>\";\r\n                echo \"<td>\" . htmlspecialchars($sample['satis_durumu']) . \"</td>\";\r\n                echo \"<td>\" . htmlspecialchars($sample['kayit_tarihi']) . \"</td>\";\r\n                echo \"</tr>\";\r\n            }\r\n            echo \"</table>\";\r\n        }\r\n\r\n    } else {\r\n        echo \"<p style='color: red;'>✗ voip_iris_rapor tablosu mevcut değil</p>\";\r\n        echo \"<p><strong>Tablo oluşturmak için SQL:</strong></p>\";\r\n        echo \"<textarea style='width: 100%; height: 200px;'>\";\r\n        echo file_get_contents('create_voip_iris_rapor_table.sql');\r\n        echo \"</textarea>\";\r\n    }\r\n\r\n    echo \"<br><hr>\";\r\n    echo \"<p><strong>Tarih:</strong> \" . date('Y-m-d H:i:s') . \"</p>\";\r\n    echo \"<p><a href='voip/hakedis-iris-rapor'>Hakediş İris Rapor Sayfasına Git</a></p>\";\r\n\r\n} catch (PDOException $e) {\r\n    echo \"<p style='color: red;'>Database Hatası: \" . $e->getMessage() . \"</p>\";\r\n} catch (Exception $e) {\r\n    echo \"<p style='color: red;'>Genel Hata: \" . $e->getMessage() . \"</p>\";\r\n}\r\n?>\r\n"
+        }
+    ]
+}

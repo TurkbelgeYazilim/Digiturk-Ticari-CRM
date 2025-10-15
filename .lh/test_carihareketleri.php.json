@@ -1,0 +1,18 @@
+{
+    "sourceFile": "test_carihareketleri.php",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1755342118257,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1755342118257,
+            "name": "Commit-0",
+            "content": "<?php\r\n// Test dosyası - carihareketleri tablosunu kontrol etmek için\r\n\r\n// CodeIgniter'ı başlat\r\nrequire_once 'system/core/CodeIgniter.php';\r\n\r\n// Database bağlantısı\r\ntry {\r\n    $db = new PDO('mysql:host=localhost;dbname=ilekasoft_crmdb', 'root', '');\r\n    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);\r\n    \r\n    echo \"<h3>CariHareketleri Tablosu - Cari ID: 19533</h3>\";\r\n    \r\n    // Cari 19533 için carihareketleri kayıtlarını göster\r\n    $stmt = $db->prepare(\"SELECT ch_id, ch_belgeNumarasi, ch_khID, ch_bankaID, ch_cekID, ch_senetID, ch_alacak, ch_cariID, ch_tarih FROM carihareketleri WHERE ch_cariID = 19533 ORDER BY ch_id DESC LIMIT 10\");\r\n    $stmt->execute();\r\n    $results = $stmt->fetchAll(PDO::FETCH_ASSOC);\r\n    \r\n    if (empty($results)) {\r\n        echo \"<p>19533 ID'li cari için carihareketleri kaydı bulunamadı.</p>\";\r\n    } else {\r\n        echo \"<table border='1' cellpadding='5' cellspacing='0'>\";\r\n        echo \"<tr><th>CH ID</th><th>Belge No</th><th>Kasa ID</th><th>Banka ID</th><th>Çek ID</th><th>Senet ID</th><th>Alacak</th><th>Cari ID</th><th>Tarih</th></tr>\";\r\n        \r\n        foreach ($results as $row) {\r\n            echo \"<tr>\";\r\n            echo \"<td>\" . $row['ch_id'] . \"</td>\";\r\n            echo \"<td>\" . $row['ch_belgeNumarasi'] . \"</td>\";\r\n            echo \"<td>\" . ($row['ch_khID'] ?: '-') . \"</td>\";\r\n            echo \"<td>\" . ($row['ch_bankaID'] ?: '-') . \"</td>\";\r\n            echo \"<td>\" . ($row['ch_cekID'] ?: '-') . \"</td>\";\r\n            echo \"<td>\" . ($row['ch_senetID'] ?: '-') . \"</td>\";\r\n            echo \"<td>\" . $row['ch_alacak'] . \"</td>\";\r\n            echo \"<td>\" . $row['ch_cariID'] . \"</td>\";\r\n            echo \"<td>\" . $row['ch_tarih'] . \"</td>\";\r\n            echo \"</tr>\";\r\n        }\r\n        echo \"</table>\";\r\n    }\r\n    \r\n    echo \"<h3>Kasahareketleri Tablosu - Cari ID: 19533</h3>\";\r\n    \r\n    // Kasahareketleri tablosundaki ilgili kayıtları da göster\r\n    $stmt2 = $db->prepare(\"SELECT kh_id, kh_belgeNumarasi, kh_giris, kh_cariID, kh_tarih FROM kasahareketleri WHERE kh_cariID = 19533 ORDER BY kh_id DESC LIMIT 5\");\r\n    $stmt2->execute();\r\n    $kasa_results = $stmt2->fetchAll(PDO::FETCH_ASSOC);\r\n    \r\n    if (empty($kasa_results)) {\r\n        echo \"<p>19533 ID'li cari için kasahareketleri kaydı bulunamadı.</p>\";\r\n    } else {\r\n        echo \"<table border='1' cellpadding='5' cellspacing='0'>\";\r\n        echo \"<tr><th>KH ID</th><th>Belge No</th><th>Giriş</th><th>Cari ID</th><th>Tarih</th></tr>\";\r\n        \r\n        foreach ($kasa_results as $row) {\r\n            echo \"<tr>\";\r\n            echo \"<td>\" . $row['kh_id'] . \"</td>\";\r\n            echo \"<td>\" . $row['kh_belgeNumarasi'] . \"</td>\";\r\n            echo \"<td>\" . $row['kh_giris'] . \"</td>\";\r\n            echo \"<td>\" . $row['kh_cariID'] . \"</td>\";\r\n            echo \"<td>\" . $row['kh_tarih'] . \"</td>\";\r\n            echo \"</tr>\";\r\n        }\r\n        echo \"</table>\";\r\n    }\r\n    \r\n} catch(PDOException $e) {\r\n    echo \"Veritabanı bağlantı hatası: \" . $e->getMessage();\r\n}\r\n?>\r\n"
+        }
+    ]
+}

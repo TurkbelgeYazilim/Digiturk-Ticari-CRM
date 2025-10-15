@@ -1,0 +1,18 @@
+{
+    "sourceFile": "test_stok_query.php",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1755506192825,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1755506192825,
+            "name": "Commit-0",
+            "content": "<?php\r\n// Test script to verify the stock name query works correctly\r\n// Include CodeIgniter bootstrap to access database\r\ndefine('BASEPATH', TRUE);\r\nrequire_once('application/config/database.php');\r\n\r\n// Create a simple database connection\r\ntry {\r\n    $mysqli = new mysqli($db['default']['hostname'], $db['default']['username'], $db['default']['password'], $db['default']['database']);\r\n    if ($mysqli->connect_error) {\r\n        die('Database connection failed: ' . $mysqli->connect_error);\r\n    }\r\n    echo \"✓ Database connection successful\\n\";\r\n    \r\n    // Test the stock query for a sample customer\r\n    $test_query = \"\r\n        SELECT c.cari_id, c.cari_ad, c.cari_soyad,\r\n               -- Test the stock name query\r\n               (SELECT s.stok_ad \r\n                FROM satisFaturasi sf2 \r\n                INNER JOIN satisFaturasiStok sfs ON sfs.satisStok_satisFaturasiID = sf2.satis_id\r\n                INNER JOIN stok s ON sfs.satisStok_stokID = s.stok_id\r\n                WHERE sf2.satis_cariID = c.cari_id \r\n                ORDER BY sf2.satis_id DESC LIMIT 1) as stok_adi\r\n        FROM cari c\r\n        WHERE c.cari_durum = 1\r\n        LIMIT 5\r\n    \";\r\n    \r\n    $result = $mysqli->query($test_query);\r\n    \r\n    if ($result) {\r\n        echo \"✓ Query executed successfully\\n\";\r\n        echo \"Results:\\n\";\r\n        \r\n        while ($row = $result->fetch_assoc()) {\r\n            echo \"- Customer: \" . $row['cari_ad'] . \" \" . $row['cari_soyad'];\r\n            if ($row['stok_adi']) {\r\n                echo \" -> Stock: \" . $row['stok_adi'];\r\n            } else {\r\n                echo \" -> Stock: No stock found\";\r\n            }\r\n            echo \"\\n\";\r\n        }\r\n    } else {\r\n        echo \"✗ Query failed: \" . $mysqli->error . \"\\n\";\r\n    }\r\n    \r\n    $mysqli->close();\r\n    \r\n} catch (Exception $e) {\r\n    echo \"✗ Error: \" . $e->getMessage() . \"\\n\";\r\n}\r\n?>\r\n"
+        }
+    ]
+}

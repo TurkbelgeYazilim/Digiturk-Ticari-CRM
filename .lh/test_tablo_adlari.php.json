@@ -1,0 +1,18 @@
+{
+    "sourceFile": "test_tablo_adlari.php",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1755342118253,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1755342118253,
+            "name": "Commit-0",
+            "content": "<?php\r\n// Tablo adlarını kontrol etmek için\r\n\r\ntry {\r\n    $db = new PDO('mysql:host=localhost;dbname=ilekasoft_crmdb', 'root', '');\r\n    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);\r\n    \r\n    echo \"<h3>Veritabanındaki Tablo Adları (kasa ile başlayanlar):</h3>\";\r\n    \r\n    $stmt = $db->prepare(\"SHOW TABLES LIKE 'kasa%'\");\r\n    $stmt->execute();\r\n    $tables = $stmt->fetchAll(PDO::FETCH_NUM);\r\n    \r\n    foreach ($tables as $table) {\r\n        echo \"<p>Tablo: <strong>\" . $table[0] . \"</strong></p>\";\r\n        \r\n        // Tablo yapısını da göster\r\n        $desc_stmt = $db->prepare(\"DESCRIBE \" . $table[0]);\r\n        $desc_stmt->execute();\r\n        $columns = $desc_stmt->fetchAll(PDO::FETCH_ASSOC);\r\n        \r\n        echo \"<ul>\";\r\n        foreach ($columns as $col) {\r\n            echo \"<li>\" . $col['Field'] . \" (\" . $col['Type'] . \")</li>\";\r\n        }\r\n        echo \"</ul>\";\r\n        echo \"<hr>\";\r\n    }\r\n    \r\n    echo \"<h3>Diğer İlgili Tablo Adları:</h3>\";\r\n    \r\n    $stmt2 = $db->prepare(\"SHOW TABLES LIKE '%hareket%'\");\r\n    $stmt2->execute();\r\n    $tables2 = $stmt2->fetchAll(PDO::FETCH_NUM);\r\n    \r\n    foreach ($tables2 as $table) {\r\n        echo \"<p>Tablo: <strong>\" . $table[0] . \"</strong></p>\";\r\n    }\r\n    \r\n} catch(PDOException $e) {\r\n    echo \"Veritabanı hatası: \" . $e->getMessage();\r\n}\r\n?>\r\n"
+        }
+    ]
+}

@@ -24,11 +24,16 @@ if (!$post_data) {
 $satis_id = isset($post_data['satis_id']) ? intval($post_data['satis_id']) : 0;
 $cari_id = isset($post_data['cari_id']) ? intval($post_data['cari_id']) : 0;
 $stok_bilgileri = isset($post_data['stok_bilgileri']) ? $post_data['stok_bilgileri'] : [];
+$sozlesme_tarihi = isset($post_data['sozlesme_tarihi']) ? $post_data['sozlesme_tarihi'] : null;
+$sozlesme_no = isset($post_data['sozlesme_no']) ? $post_data['sozlesme_no'] : null;
+$sozlesme_aciklama = isset($post_data['sozlesme_aciklama']) ? $post_data['sozlesme_aciklama'] : null;
 
 error_log("DEBUG: stok_kaydet called with satis_id: $satis_id, cari_id: $cari_id");
 error_log("DEBUG: stok_bilgileri: " . json_encode($stok_bilgileri));
+error_log("DEBUG: sozlesme_tarihi: $sozlesme_tarihi, sozlesme_no: $sozlesme_no");
 
-if (!$satis_id || !$stok_bilgileri || !is_array($stok_bilgileri)) {
+// satis_id 0 olabilir (yeni kayıt için), ama cari_id ve stok_bilgileri zorunlu
+if ($satis_id === null || $satis_id === '' || !$cari_id || !$stok_bilgileri || !is_array($stok_bilgileri)) {
     echo json_encode([
         'success' => false, 
         'message' => 'Gerekli veriler eksik',
@@ -104,19 +109,54 @@ try {
     // Transaction başlat
     $mysqli->autocommit(false);
     
-    // Mevcut stok kayıtlarını sil
-    $delete_query = "DELETE FROM satisFaturasiStok WHERE satisStok_satisFaturasiID = ?";
-    $delete_stmt = $mysqli->prepare($delete_query);
-    
-    if (!$delete_stmt) {
-        throw new Exception("Delete prepare failed: " . $mysqli->error);
+    // Eğer yeni kayıt ise (satis_id = 0), önce satisFaturasi kaydı oluştur
+    if ($satis_id == 0) {
+        $insert_satis_query = "
+            INSERT INTO satisFaturasi (
+                satis_cariID,
+                satis_faturaTarihi,
+                satis_faturaNo,
+                satis_aciklama,
+                satis_araToplam,
+                satis_kdvToplam,
+                satis_genelToplam,
+                satis_netTutar,
+                satis_vergiDahilToplam,
+                satis_olusturmaTarihi,
+                satis_istisna_id,
+                satis_vergiMuafiyetSebep
+            ) VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, CURDATE(), 0, '')
+        ";
+        
+        $insert_satis_stmt = $mysqli->prepare($insert_satis_query);
+        if (!$insert_satis_stmt) {
+            throw new Exception("Satis insert prepare failed: " . $mysqli->error);
+        }
+        
+        $insert_satis_stmt->bind_param("isss", $cari_id, $sozlesme_tarihi, $sozlesme_no, $sozlesme_aciklama);
+        if (!$insert_satis_stmt->execute()) {
+            throw new Exception("Satis insert execution failed: " . $insert_satis_stmt->error);
+        }
+        
+        $satis_id = $mysqli->insert_id;
+        $insert_satis_stmt->close();
+        
+        error_log("DEBUG: Yeni satisFaturasi kaydı oluşturuldu, satis_id: $satis_id");
+    } else {
+        // Mevcut kayıt için stokları sil
+        $delete_query = "DELETE FROM satisFaturasiStok WHERE satisStok_satisFaturasiID = ?";
+        $delete_stmt = $mysqli->prepare($delete_query);
+        
+        if (!$delete_stmt) {
+            throw new Exception("Delete prepare failed: " . $mysqli->error);
+        }
+        
+        $delete_stmt->bind_param("i", $satis_id);
+        if (!$delete_stmt->execute()) {
+            throw new Exception("Delete execution failed: " . $delete_stmt->error);
+        }
+        $delete_stmt->close();
     }
-    
-    $delete_stmt->bind_param("i", $satis_id);
-    if (!$delete_stmt->execute()) {
-        throw new Exception("Delete execution failed: " . $delete_stmt->error);
-    }
-    $delete_stmt->close();
     
     $toplam_tutar_kdv_dahil = 0;
     $inserted_count = 0;
@@ -134,7 +174,7 @@ try {
             satisStok_tevkifat_id,
             satisStok_satirIskonto,
             satisStok_indirimlifiyat,
-            satisStok_kullanici_sayisi
+            satisStok_abonelikBitisTarihi
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ";
     
@@ -152,7 +192,7 @@ try {
         $miktar = parseTurkishNumber($stok['miktar']);
         $birim_fiyat_kdv_dahil = parseTurkishNumber($stok['birim_fiyat']); // KDV dahil fiyat
         $kdv_orani = parseTurkishNumber($stok['kdv_orani']);
-        $kullanici_sayisi = !empty($stok['kullanici_sayisi']) ? intval($stok['kullanici_sayisi']) : null;
+        $abonelik_bitis_tarihi = !empty($stok['abonelik_bitis_tarihi']) ? $stok['abonelik_bitis_tarihi'] : null;
         
         error_log("DEBUG: Parsed values - miktar: $miktar, birim_fiyat: $birim_fiyat_kdv_dahil, kdv_orani: $kdv_orani");
         
@@ -167,7 +207,7 @@ try {
         $indirimli_fiyat = $birim_fiyat_kdv_dahil; // Same as birim fiyat since no discount
         
         // Veritabanına kaydet
-        $insert_stmt->bind_param("iiddddidddi", 
+        $insert_stmt->bind_param("iidddddidds", 
             $satis_id, 
             $stok_id, 
             $miktar, 
@@ -178,7 +218,7 @@ try {
             $tevkifat_id,
             $satir_iskonto,
             $indirimli_fiyat,
-            $kullanici_sayisi
+            $abonelik_bitis_tarihi
         );
 
         if (!$insert_stmt->execute()) {
@@ -221,14 +261,17 @@ try {
     $kdv_haric_toplam = round($kdv_haric_toplam, 2);
     $kdv_toplam = round($kdv_toplam, 2);
     
-    // satisFaturasi tablosunu güncelle
+    // satisFaturasi tablosunu güncelle - sözleşme bilgileri dahil
     $update_invoice_query = "
         UPDATE satisFaturasi SET 
             satis_araToplam = ?,
             satis_kdvToplam = ?,
             satis_genelToplam = ?,
             satis_netTutar = ?,
-            satis_vergiDahilToplam = ?
+            satis_vergiDahilToplam = ?,
+            satis_faturaTarihi = ?,
+            satis_faturaNo = ?,
+            satis_aciklama = ?
         WHERE satis_id = ?
     ";
     
@@ -237,12 +280,15 @@ try {
         throw new Exception("Invoice update prepare failed: " . $mysqli->error);
     }
     
-    $update_stmt->bind_param("dddddi", 
+    $update_stmt->bind_param("dddddsssi", 
         $kdv_haric_toplam,
         $kdv_toplam, 
         $kdv_dahil_toplam,
         $kdv_haric_toplam,
         $kdv_dahil_toplam,
+        $sozlesme_tarihi,
+        $sozlesme_no,
+        $sozlesme_aciklama,
         $satis_id
     );
     

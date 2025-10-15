@@ -762,7 +762,32 @@ $config['sess_cookie_name'] = 'ci_session';
 
 $config['sess_expiration'] = 0;
 
-$config['sess_save_path'] = 'E:\Inetpub\vhosts\ilekasoft.com\tmp';
+// Session save path - use the project tmp directory which is within allowed paths
+$sess_save_path = FCPATH . 'tmp';
+
+// Ensure the tmp directory exists and is writable
+if (!is_dir($sess_save_path)) {
+	@mkdir($sess_save_path, 0755, true);
+}
+
+// Windows için özel chmod ve izin ayarları
+if (is_dir($sess_save_path)) {
+	@chmod($sess_save_path, 0777);
+	// Test dosyası yazarak gerçek yazma kontrolü yap
+	$test_file = $sess_save_path . '/test_' . time() . '.tmp';
+	$write_test = @file_put_contents($test_file, 'test');
+	if ($write_test !== false) {
+		@unlink($test_file);
+		$config['sess_save_path'] = $sess_save_path;
+	} else {
+		// Yazma başarısız ise sistem default kullan
+		$config['sess_save_path'] = '';
+		error_log('[config] Warning: session save path not writable; falling back to PHP defaults');
+	}
+} else {
+	$config['sess_save_path'] = '';
+	error_log('[config] Warning: session save path directory not found; falling back to PHP defaults');
+}
 
 $config['sess_match_ip'] = FALSE;
 
@@ -808,9 +833,9 @@ $config['cookie_domain']	= '';
 
 $config['cookie_path']		= '/';
 
-$config['cookie_secure']	= FALSE;
+$config['cookie_secure']	= TRUE;  // HTTPS kullanıldığı için TRUE yapıldı
 
-$config['cookie_httponly'] 	= FALSE;
+$config['cookie_httponly'] 	= TRUE;  // Güvenlik için TRUE yapıldı
 
 
 

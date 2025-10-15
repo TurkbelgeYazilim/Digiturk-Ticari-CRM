@@ -1,0 +1,18 @@
+{
+    "sourceFile": "test_api_debug.php",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1758628430262,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1758628430262,
+            "name": "Commit-0",
+            "content": "<?php\r\n// Test endpoint - sadece geliştirme amaçlı\r\ndefined('BASEPATH') OR exit('No direct script access allowed');\r\n\r\n// Include CodeIgniter bootstrap\r\nrequire_once BASEPATH.'core/CodeIgniter.php';\r\n\r\n// Test verileri\r\necho \"<h2>Seçmeli Silme Test Sayfası</h2>\";\r\n\r\n// API'ları test et\r\necho \"<h3>1. Veri Listesi Getir Testi</h3>\";\r\n$ch = curl_init();\r\ncurl_setopt($ch, CURLOPT_URL, \"https://crm.ilekasoft.com/muhasebe/veri_listesi_getir\");\r\ncurl_setopt($ch, CURLOPT_POST, 1);\r\ncurl_setopt($ch, CURLOPT_POSTFIELDS, \"cari_id=20436&tablo_kodu=satis_faturalari&tablo_adi=Satış Faturaları\");\r\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\r\ncurl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type: application/x-www-form-urlencoded'));\r\n$response = curl_exec($ch);\r\ncurl_close($ch);\r\n\r\necho \"<pre>Veri Listesi Yanıtı:\\n\";\r\necho htmlspecialchars($response);\r\necho \"</pre>\";\r\n\r\necho \"<h3>2. Cari Silme Kontrol Testi</h3>\";\r\n$ch2 = curl_init();\r\ncurl_setopt($ch2, CURLOPT_URL, \"https://crm.ilekasoft.com/muhasebe/cari_sil_kontrol\");\r\ncurl_setopt($ch2, CURLOPT_POST, 1);\r\ncurl_setopt($ch2, CURLOPT_POSTFIELDS, \"cari_id=20436\");\r\ncurl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);\r\ncurl_setopt($ch2, CURLOPT_HTTPHEADER, array('Content-Type: application/x-www-form-urlencoded'));\r\n$response2 = curl_exec($ch2);\r\ncurl_close($ch2);\r\n\r\necho \"<pre>Cari Silme Kontrol Yanıtı:\\n\";\r\necho htmlspecialchars($response2);\r\necho \"</pre>\";\r\n\r\necho \"<h3>3. Test Bilgileri</h3>\";\r\necho \"<ul>\";\r\necho \"<li>Test Cari ID: 20436</li>\";\r\necho \"<li>Test Cari Ad: TEST TEST</li>\";\r\necho \"<li>Satış Faturaları: 2 adet (ID: 1871, 1872)</li>\";\r\necho \"<li>Bağlı Stok Kaydı: 1671 (satis_id: 1871 için)</li>\";\r\necho \"</ul>\";\r\n\r\necho \"<h3>4. Beklenen Sonuç</h3>\";\r\necho \"<p>Seçmeli silme ile sadece 1871 ID'li satış faturası silindiğinde, bağlı stok kaydı 1671 de otomatik silinmeli.</p>\";\r\necho \"<p>1872 ID'li satış faturası etkilenmemeli.</p>\";\r\n?>\r\n"
+        }
+    ]
+}

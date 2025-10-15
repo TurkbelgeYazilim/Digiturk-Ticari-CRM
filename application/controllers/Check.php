@@ -12,43 +12,42 @@ class Check extends CI_Controller {
 
 		parent::__construct();
 
-		$this->load->model('vt');
+		$this->load->model('Vt', 'vt');
+		$this->load->library('session');
+		$this->load->database();
+		$this->load->helper('url');
 
-
-
-		$control = session("r","login");
-
-
-
-		if($control){
-
-			redirect("");
-
-		}
+		// Geçici olarak session kontrol devre dışı
+		// $control = session("r","login");
+		// if($control){
+		//     redirect("");
+		// }
 
 	}
 
 
 
 	public function index(){
-
 		$this->load->view('giris');
-
 	}
 
 	
 
 	public function login(){
+		
+		// POST kontrolü
+		if($_SERVER['REQUEST_METHOD'] == 'POST' && !empty($_POST)) {
+			
+			$email = isset($_POST['u_email']) ? trim($_POST['u_email']) : '';
+			$password = isset($_POST['u_password']) ? trim($_POST['u_password']) : '';
+			
+		if(empty($email) || empty($password)) {
+			$this->session->set_flashdata('login_fail','ok');
+			redirect('check');
+			return;
+		}
 
-		$email = postval('u_email');
-
-		$password = postval('u_password');
-
-
-
-		$query1 = $this->vt->single("kullanicilar",array('kullanici_eposta'=>$email,'kullanici_sifre'=>md5($password)));
-
-		if($query1){
+		$query1 = $this->vt->single("kullanicilar",array('kullanici_eposta'=>$email,'kullanici_sifre'=>md5($password)));		if($query1){
 
 			$kullaniciSorumluMudur = $query1->kullanici_sorumluMudur;
 			$kullaniciAnaHesapID = $query1->kullanici_anaHesapID;
@@ -65,6 +64,17 @@ class Check extends CI_Controller {
 
 				$today = strtotime(date('Y-m-d H:i:s'));
 
+
+                // Debug: log session data after setting session vars to help troubleshooting session persistence
+                $ci_session_data = '';
+                if (isset($this->session) && method_exists($this->session, 'all_userdata')) {
+                    $ci_session_data = print_r($this->session->all_userdata(), true);
+                } else {
+                    $ci_session_data = isset($_SESSION) ? print_r($_SESSION, true) : '$_SESSION not available';
+                }
+                file_put_contents('login_debug.txt', "Post-login session data:\n" . $ci_session_data . "\n", FILE_APPEND);
+
+                redirect('');
 				$demoSonTarih = strtotime($query1->kullanici_demoSonTarihi);
 
 
@@ -186,29 +196,14 @@ class Check extends CI_Controller {
 
 
 				session("w","login",true);
-
 				session("w","login_info",$query1);
-
 				logekle(54,5);
 
 				$uniqID=uniqid();
-
 				$_SESSION["kullanici_oturumDurum"]=$uniqID;
-
 				$dataOturum["kullanici_oturumDurum"] = $uniqID;
-
 				$this->vt->update('kullanicilar', array('kullanici_id'=>$kullaniciID), $dataOturum);
-
 				
-
-				
-
-	
-
-				
-
-				
-
 				redirect('');
 
 			}else{
@@ -220,13 +215,14 @@ class Check extends CI_Controller {
 			}
 
 		}else{
-
 			$this->session->set_flashdata('login_fail','ok');
-
 			redirect('check');
-
 		}
-
+		
+		} else {
+			// GET request ise giriş sayfasına yönlendir
+			redirect('check');
+		}
 	}
 
 

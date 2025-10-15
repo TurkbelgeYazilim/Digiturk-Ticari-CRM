@@ -436,3 +436,16 @@
 	</script>
 
 <?php } ?>
+
+<?php if ($this->session->flashdata('email_uyari')): ?>
+    <script>
+        swal({
+          title: 'Uyarý',
+          type: 'warning',
+          text: '<?= $this->session->flashdata('email_uyari'); ?>',
+          confirmButtonText:'Tamam',
+          button: false,
+          timer: 7000,
+        });
+    </script>
+<?php endif; ?>

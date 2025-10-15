@@ -1,0 +1,18 @@
+{
+    "sourceFile": "debug_kdv_problem.php",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1756560711347,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1756560711347,
+            "name": "Commit-0",
+            "content": "<?php\r\n// Debug script for KDV problem\r\nheader('Content-Type: text/plain; charset=utf-8');\r\n\r\n$mysqli = new mysqli('localhost', 'ilekasoft_crmuser', 'KaleW356!', 'ilekasoft_crmdb');\r\n$mysqli->set_charset(\"utf8mb4\");\r\n\r\nif ($mysqli->connect_error) {\r\n    die('Connection failed: ' . $mysqli->connect_error);\r\n}\r\n\r\necho \"=== Tablo yapısı kontrolü ===\\n\";\r\n$result = $mysqli->query('DESCRIBE satisFaturasiStok');\r\nif ($result) {\r\n    echo \"Table structure for satisFaturasiStok:\\n\";\r\n    while ($row = $result->fetch_assoc()) {\r\n        echo $row['Field'] . ' - ' . $row['Type'] . \"\\n\";\r\n    }\r\n} else {\r\n    echo \"Error describing table: \" . $mysqli->error . \"\\n\";\r\n}\r\n\r\necho \"\\n=== Problematik kayıt kontrolü ===\\n\";\r\n$result2 = $mysqli->query('SELECT * FROM satisFaturasiStok WHERE satisStok_satisFaturasiID = 1402 LIMIT 1');\r\nif ($result2) {\r\n    if ($result2->num_rows > 0) {\r\n        echo \"Problematic record found:\\n\";\r\n        $row = $result2->fetch_assoc();\r\n        foreach ($row as $key => $value) {\r\n            echo \"$key: $value\\n\";\r\n        }\r\n    } else {\r\n        echo \"No record found with satisStok_satisFaturasiID = 1402\\n\";\r\n    }\r\n} else {\r\n    echo \"Error querying table: \" . $mysqli->error . \"\\n\";\r\n}\r\n\r\necho \"\\n=== Tüm 1402 fatura ID'li kayıtlar ===\\n\";\r\n$result3 = $mysqli->query('SELECT satisStok_id, satisStok_miktar, satisStok_birimFiyat, satisStok_fiyatMiktar, satisStok_kdv FROM satisFaturasiStok WHERE satisStok_satisFaturasiID = 1402');\r\nif ($result3) {\r\n    if ($result3->num_rows > 0) {\r\n        echo \"All records for invoice 1402:\\n\";\r\n        while ($row = $result3->fetch_assoc()) {\r\n            echo \"ID: {$row['satisStok_id']}, Miktar: {$row['satisStok_miktar']}, BirimFiyat: {$row['satisStok_birimFiyat']}, FiyatMiktar: {$row['satisStok_fiyatMiktar']}, KDV: {$row['satisStok_kdv']}\\n\";\r\n        }\r\n    } else {\r\n        echo \"No records found for invoice 1402\\n\";\r\n    }\r\n} else {\r\n    echo \"Error: \" . $mysqli->error . \"\\n\";\r\n}\r\n\r\n$mysqli->close();\r\n?>\r\n"
+        }
+    ]
+}

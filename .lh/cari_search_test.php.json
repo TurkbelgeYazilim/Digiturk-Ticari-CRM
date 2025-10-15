@@ -1,0 +1,18 @@
+{
+    "sourceFile": "cari_search_test.php",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1756367338181,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1756367338181,
+            "name": "Commit-0",
+            "content": "<?php\r\n/**\r\n * Cari Arama Test Script\r\n * Test the search functionality implementation\r\n */\r\n\r\necho \"<h2>Cari Arama Test</h2>\";\r\necho \"<p>Testing the new search functionality...</p>\";\r\n\r\n// Test search parameters\r\n$test_searches = [\r\n    'test',\r\n    'ali',\r\n    '1234567890',\r\n    '555',\r\n    'İleka'\r\n];\r\n\r\necho \"<h3>Test Search Terms:</h3>\";\r\necho \"<ul>\";\r\nforeach ($test_searches as $term) {\r\n    echo \"<li>$term</li>\";\r\n}\r\necho \"</ul>\";\r\n\r\n// Test URL construction\r\n$base_url = 'https://crm.ilekasoft.com/muhasebe/tam-ana-rapor';\r\n$test_params = [\r\n    'cari_search' => 'test',\r\n    'aktivasyon_durum' => 'Aktif'\r\n];\r\n\r\n$test_url = $base_url . '?' . http_build_query($test_params);\r\n\r\necho \"<h3>Test URL:</h3>\";\r\necho \"<p><a href='$test_url' target='_blank'>$test_url</a></p>\";\r\n\r\n// Test the fields that will be searched\r\necho \"<h3>Search Fields in Database:</h3>\";\r\necho \"<ul>\";\r\necho \"<li><strong>cari_ad:</strong> Cari adı</li>\";\r\necho \"<li><strong>cari_soyad:</strong> Cari soyadı</li>\";\r\necho \"<li><strong>cari_vergiNumarasi:</strong> Vergi numarası</li>\";\r\necho \"<li><strong>cari_firmaTelefon:</strong> Firma telefonu</li>\";\r\necho \"<li><strong>cari_tckn:</strong> TC Kimlik Numarası</li>\";\r\necho \"</ul>\";\r\n\r\necho \"<h3>Implementation Status:</h3>\";\r\necho \"<ul>\";\r\necho \"<li>✅ Search form added to view</li>\";\r\necho \"<li>✅ Controller modified to handle search parameters</li>\";\r\necho \"<li>✅ SQL query updated with WHERE conditions</li>\";\r\necho \"<li>✅ Autocomplete endpoint created</li>\";\r\necho \"<li>✅ JavaScript enhancements added</li>\";\r\necho \"<li>✅ UI/UX improvements implemented</li>\";\r\necho \"</ul>\";\r\n\r\necho \"<h3>How to Test:</h3>\";\r\necho \"<ol>\";\r\necho \"<li>Go to <a href='$base_url' target='_blank'>Tam Ana Rapor</a></li>\";\r\necho \"<li>Look for the 'Arama' section above the data table</li>\";\r\necho \"<li>Enter search terms in the 'Cari Arama' field</li>\";\r\necho \"<li>Select an activation status (optional)</li>\";\r\necho \"<li>Click 'Ara' button or press Enter</li>\";\r\necho \"<li>Results should be filtered based on the search criteria</li>\";\r\necho \"</ol>\";\r\n\r\necho \"<hr>\";\r\necho \"<p><strong>Note:</strong> The search will look for matches in the following cari table fields:</p>\";\r\necho \"<p><code>cari_ad, cari_soyad, cari_vergiNumarasi, cari_firmaTelefon, cari_tckn</code></p>\";\r\n?>\r\n"
+        }
+    ]
+}

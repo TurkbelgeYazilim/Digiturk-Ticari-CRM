@@ -1,0 +1,18 @@
+{
+    "sourceFile": "create_voip_iris_rapor_table.sql",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1754741006024,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1754741006024,
+            "name": "Commit-0",
+            "content": "-- VoIP İris Rapor tablosu oluşturma scripti\r\n-- Bu script, eğer tablo mevcut değilse oluşturacaktır\r\n\r\nCREATE TABLE IF NOT EXISTS `voip_iris_rapor` (\r\n  `id` int(11) NOT NULL AUTO_INCREMENT,\r\n  `talep_id` varchar(20) NOT NULL,\r\n  `talep_turu` varchar(100) DEFAULT NULL,\r\n  `uydu_basvuru_potansiyel_no` varchar(20) DEFAULT NULL,\r\n  `uydu_basvuru_uye_no` varchar(20) DEFAULT NULL,\r\n  `dt_musteri_no` varchar(20) DEFAULT NULL,\r\n  `memo_id` varchar(20) DEFAULT NULL,\r\n  `memo_kayit_tipi` varchar(20) DEFAULT NULL,\r\n  `memo_id_tip` varchar(10) DEFAULT NULL,\r\n  `memo_kodu` varchar(100) DEFAULT NULL,\r\n  `memo_kapanis_tarihi` datetime DEFAULT NULL,\r\n  `memo_yonlenen_bayi_kodu` varchar(20) DEFAULT NULL,\r\n  `memo_yonlenen_bayi_adi` varchar(255) DEFAULT NULL,\r\n  `memo_yonlenen_bayi_yoneticisi` varchar(100) DEFAULT NULL,\r\n  `memo_yonlenen_bayi_bolge` varchar(100) DEFAULT NULL,\r\n  `memo_yonlenen_bayi_teknik_yntc` varchar(100) DEFAULT NULL,\r\n  `talep_giris_tarihi` datetime DEFAULT NULL,\r\n  `talebi_giren_bayi_kodu` varchar(20) DEFAULT NULL,\r\n  `talebi_giren_bayi_adi` varchar(255) DEFAULT NULL,\r\n  `talebi_giren_personel` varchar(100) DEFAULT NULL,\r\n  `talebi_giren_personelno` varchar(20) DEFAULT NULL,\r\n  `talebi_giren_personelkodu` varchar(50) DEFAULT NULL,\r\n  `talebi_giren_personel_altbayi` varchar(100) DEFAULT NULL,\r\n  `talep_kaynak` varchar(100) DEFAULT NULL,\r\n  `satis_durumu` varchar(100) DEFAULT NULL,\r\n  `internet_surec_durumu` varchar(100) DEFAULT NULL,\r\n  `aktive_edilen_uyeno` varchar(20) DEFAULT NULL,\r\n  `aktive_edilen_outletno` varchar(10) DEFAULT NULL,\r\n  `aktive_edilen_sozlesmeno` varchar(50) DEFAULT NULL,\r\n  `aktive_edilen_sozlesmekmp` varchar(10) DEFAULT NULL,\r\n  `aktive_edilen_sozlesmedurum` varchar(50) DEFAULT NULL,\r\n  `talep_takip_notu` text DEFAULT NULL,\r\n  `guncel_outlet_durum` varchar(50) DEFAULT NULL,\r\n  `teyit_durum` varchar(50) DEFAULT NULL,\r\n  `teyit_arama_durum` varchar(50) DEFAULT NULL,\r\n  `randevu_tarihi` datetime DEFAULT NULL,\r\n  `memo_son_durum` varchar(100) DEFAULT NULL,\r\n  `memo_son_cevap` varchar(100) DEFAULT NULL,\r\n  `memo_son_aciklama` text DEFAULT NULL,\r\n  `kayit_tarihi` timestamp NOT NULL DEFAULT current_timestamp(),\r\n  `guncelleme_tarihi` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),\r\n  PRIMARY KEY (`id`),\r\n  KEY `idx_talep_id` (`talep_id`),\r\n  KEY `idx_dt_musteri_no` (`dt_musteri_no`),\r\n  KEY `idx_memo_id` (`memo_id`),\r\n  KEY `idx_memo_kayit_tipi` (`memo_kayit_tipi`),\r\n  KEY `idx_memo_yonlenen_bayi_kodu` (`memo_yonlenen_bayi_kodu`),\r\n  KEY `idx_talep_giris_tarihi` (`talep_giris_tarihi`),\r\n  KEY `idx_talebi_giren_bayi_kodu` (`talebi_giren_bayi_kodu`),\r\n  KEY `idx_satis_durumu` (`satis_durumu`)\r\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;\r\n\r\n-- İndeksler performans için önemli\r\n-- UNIQUE index talep_id için (duplicate'ları önlemek için)\r\nALTER TABLE `voip_iris_rapor` \r\nADD UNIQUE KEY `unique_talep_id` (`talep_id`);\r\n"
+        }
+    ]
+}

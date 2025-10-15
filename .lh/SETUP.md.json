@@ -1,0 +1,18 @@
+{
+    "sourceFile": "SETUP.md",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1759927810170,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1759927810170,
+            "name": "Commit-0",
+            "content": "# İleka CRM Kurulum Talimatları\r\n\r\n## 🔧 Konfigürasyon Dosyaları\r\n\r\nGüvenlik nedeniyle hassas konfigürasyon dosyaları repository'de bulunmamaktadır. Aşağıdaki dosyaları kopyalayıp düzenlemeniz gerekmektedir:\r\n\r\n### 1. Veritabanı Ayarları\r\n```bash\r\ncp application/config/database.example.php application/config/database.php\r\n```\r\n`database.php` dosyasında şu bilgileri güncelleyin:\r\n- `hostname`: Veritabanı sunucu adresi\r\n- `username`: Veritabanı kullanıcı adı\r\n- `password`: Veritabanı şifresi\r\n- `database`: Veritabanı adı\r\n\r\n### 2. SMS Ayarları\r\n```bash\r\ncp application/config/sms.example.php application/config/sms.php\r\n```\r\n`sms.php` dosyasında şu bilgileri güncelleyin:\r\n- `sms_username`: SMS servis kullanıcı adı\r\n- `sms_password`: SMS servis şifresi\r\n- `sms_originator`: Gönderici adı\r\n\r\n### 3. Email Ayarları\r\n```bash\r\ncp application/config/email.example.php application/config/email.php\r\n```\r\n`email.php` dosyasında şu bilgileri güncelleyin:\r\n- `email_smtp_host`: SMTP sunucu adresi\r\n- `email_smtp_user`: Email adresi\r\n- `email_smtp_pass`: Email şifresi\r\n\r\n## 🚀 İlk Kurulum\r\n\r\n1. Repository'i klonlayın\r\n2. Config dosyalarını yukarıdaki talimatlar doğrultusunda oluşturun\r\n3. Composer bağımlılıklarını yükleyin:\r\n   ```bash\r\n   composer install\r\n   ```\r\n4. Veritabanı tablolarını oluşturun (SQL dosyası `1OrnekData/` klasöründe)\r\n\r\n## 🔒 Güvenlik\r\n\r\n- **Asla** gerçek şifreleri repository'e commit etmeyin\r\n- Config dosyaları `.gitignore` ile korunmaktadır\r\n- Production ortamında environment variables kullanın\r\n\r\n## 👨‍💻 Geliştirici\r\n\r\n**Batuhan Kahraman**\r\n- 📧 batuhan.kahraman@ileka.com.tr\r\n- 📱 +90 501 357 10 85\r\n- 🔗 [GitHub](https://github.com/Batuhan-Kahraman/)"
+        }
+    ]
+}

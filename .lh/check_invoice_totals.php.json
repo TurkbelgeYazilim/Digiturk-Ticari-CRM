@@ -1,0 +1,18 @@
+{
+    "sourceFile": "check_invoice_totals.php",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1755591502982,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1755591502982,
+            "name": "Commit-0",
+            "content": "<?php\r\n// Check invoice totals - Quick verification endpoint\r\nheader('Content-Type: application/json; charset=utf-8');\r\n\r\n$satis_id = isset($_GET['satis_id']) ? intval($_GET['satis_id']) : 0;\r\n\r\nif (!$satis_id) {\r\n    echo json_encode(['error' => 'satis_id required']);\r\n    exit;\r\n}\r\n\r\ntry {\r\n    $mysqli = new mysqli('localhost', 'ilekasoft_crmuser', 'KaleW356!', 'ilekasoft_crmdb');\r\n    $mysqli->set_charset('utf8mb4');\r\n    \r\n    if ($mysqli->connect_error) {\r\n        throw new Exception(\"MySQL connection failed: \" . $mysqli->connect_error);\r\n    }\r\n    \r\n    $query = \"SELECT \r\n        satis_id,\r\n        satis_cariID,\r\n        satis_araToplam,\r\n        satis_kdvToplam,\r\n        satis_genelToplam,\r\n        satis_netTutar,\r\n        satis_vergiDahilToplam\r\n    FROM satisFaturasi \r\n    WHERE satis_id = ?\";\r\n    \r\n    $stmt = $mysqli->prepare($query);\r\n    $stmt->bind_param(\"i\", $satis_id);\r\n    $stmt->execute();\r\n    $result = $stmt->get_result();\r\n    \r\n    $fatura_data = $result->fetch_assoc();\r\n    $stmt->close();\r\n    $mysqli->close();\r\n    \r\n    echo json_encode([\r\n        'success' => true,\r\n        'invoice_data' => $fatura_data\r\n    ]);\r\n    \r\n} catch (Exception $e) {\r\n    echo json_encode(['error' => $e->getMessage()]);\r\n}\r\n?>\r\n"
+        }
+    ]
+}

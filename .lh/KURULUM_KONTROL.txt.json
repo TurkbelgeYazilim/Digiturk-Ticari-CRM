@@ -1,0 +1,22 @@
+{
+    "sourceFile": "KURULUM_KONTROL.txt",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 1,
+            "patches": [
+                {
+                    "date": 1755012446393,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1755012755220,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -4,20 +4,24 @@\n \r\n 1. CONTROLLER GÜNCELLEMESİ\r\n    - application/controllers/Voip.php ✅\r\n    - hakedis_bayi_hesapla() fonksiyonu eklendi\r\n+   - debug_test() fonksiyonu eklendi (geliştirme amaçlı)\r\n    - Modül ID: 1907\r\n \r\n 2. VIEW DOSYASI OLUŞTURULDU\r\n    - application/views/voip/hakedis-bayi-hesapla.php ✅\r\n+   - application/views/voip/debug-test.php ✅ (test amaçlı)\r\n+   - Footer hatası düzeltildi (footer.php -> footer-js.php)\r\n    - Responsive tasarım\r\n    - Filtreleme özellikleri\r\n    - İstatistik kartları\r\n \r\n 3. ROUTES GÜNCELLENDI\r\n    - application/config/routes.php ✅\r\n    - voip/hakedis-bayi-hesapla\r\n    - voip-hakedis/hakedis-bayi-hesapla\r\n+   - voip/debug-test (test amaçlı)\r\n \r\n 4. SIDEBAR MENÜsÜ EKLENDİ\r\n    - application/views/include/sidebar.php ✅\r\n    - Yetki kontrolü ile koşullu görünüm\r\n@@ -36,10 +40,11 @@\n    (1, 1907, 2),\r\n    (1, 1907, 3),\r\n    (1, 1907, 4);\r\n \r\n-2. TEST SAYFASI:\r\n-   - URL: https://crm.ilekasoft.com/voip/hakedis-bayi-hesapla\r\n+2. TEST SAYFALARI:\r\n+   - DEBUG TEST: https://crm.ilekasoft.com/voip/debug-test (sistem kontrolü)\r\n+   - ANA SAYFA: https://crm.ilekasoft.com/voip/hakedis-bayi-hesapla\r\n    - Yetki kontrol URL: https://crm.ilekasoft.com/yonetici/kullaniciGrubuDuzenle\r\n \r\n 🎯 MODÜL ÖZELLİKLERİ:\r\n \r\n@@ -51,6 +56,15 @@\n ✅ Kapanma oranı hesaplama\r\n ✅ Responsive tasarım\r\n ✅ Yetki kontrolü\r\n ✅ Input sanitization\r\n+✅ Footer hatası düzeltildi\r\n \r\n+🔧 HATA DÜZELTMELERİ:\r\n+\r\n+✅ Footer include hatası çözüldü\r\n+✅ JS include düzeltildi\r\n+✅ Debug test sayfası eklendi\r\n+✅ Standart title formatı eklendi ($baslik değişkeni)\r\n+✅ Duplicate footer-js include kaldırıldı\r\n+\r\n Bu kurulum tamamlandıktan sonra sistem kullanıma hazır olacaktır!\r\n"
+                }
+            ],
+            "date": 1755012446393,
+            "name": "Commit-0",
+            "content": "HAKEDIŞ BAYI HESAPLA MODÜLÜ KURULUM KONTROLÜ\r\n\r\n✅ TAMAMLANAN ADIMLAR:\r\n\r\n1. CONTROLLER GÜNCELLEMESİ\r\n   - application/controllers/Voip.php ✅\r\n   - hakedis_bayi_hesapla() fonksiyonu eklendi\r\n   - Modül ID: 1907\r\n\r\n2. VIEW DOSYASI OLUŞTURULDU\r\n   - application/views/voip/hakedis-bayi-hesapla.php ✅\r\n   - Responsive tasarım\r\n   - Filtreleme özellikleri\r\n   - İstatistik kartları\r\n\r\n3. ROUTES GÜNCELLENDI\r\n   - application/config/routes.php ✅\r\n   - voip/hakedis-bayi-hesapla\r\n   - voip-hakedis/hakedis-bayi-hesapla\r\n\r\n4. SIDEBAR MENÜsÜ EKLENDİ\r\n   - application/views/include/sidebar.php ✅\r\n   - Yetki kontrolü ile koşullu görünüm\r\n\r\n5. YETKİ SİSTEMİ GÜNCELLENDİ\r\n   - application/controllers/Yonetici.php ✅\r\n   - Modül listesine ID:1907 eklendi\r\n\r\n📋 MANUEL YAPILMASI GEREKEN ADIMLAR:\r\n\r\n1. VERİTABANI YETKİ EKLEMESİ:\r\n   https://stoic-bell.85-95-239-2.plesk.page/phpMyAdmin/ adresinde:\r\n   \r\n   INSERT INTO kullanici_grubu_yetkisi (kgy_grupID, kgy_modul, kgy_yetki) VALUES \r\n   (1, 1907, 1),\r\n   (1, 1907, 2),\r\n   (1, 1907, 3),\r\n   (1, 1907, 4);\r\n\r\n2. TEST SAYFASI:\r\n   - URL: https://crm.ilekasoft.com/voip/hakedis-bayi-hesapla\r\n   - Yetki kontrol URL: https://crm.ilekasoft.com/yonetici/kullaniciGrubuDuzenle\r\n\r\n🎯 MODÜL ÖZELLİKLERİ:\r\n\r\n✅ SATIS_DURUMU = 'Tamamlandı' filtresi\r\n✅ MEMO_KAPANIS_TARIHI tarih filtreleri\r\n✅ talebi_giren_personel_altbayi gruplandırması\r\n✅ Toplam/kapanan talep sayıları\r\n✅ İlk/son kapanış tarihleri\r\n✅ Kapanma oranı hesaplama\r\n✅ Responsive tasarım\r\n✅ Yetki kontrolü\r\n✅ Input sanitization\r\n\r\nBu kurulum tamamlandıktan sonra sistem kullanıma hazır olacaktır!\r\n"
+        }
+    ]
+}

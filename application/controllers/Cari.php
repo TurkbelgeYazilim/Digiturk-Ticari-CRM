@@ -256,16 +256,8 @@ class Cari extends CI_Controller
 					}
 				}*/
 
-		$vergiKontrolQ = "SELECT * FROM cari WHERE cari_olusturanAnaHesap = '$anaHesap' AND cari_vergiNumarasi = '$cariVergiNo' AND cari_durum=true";
-		$vergiKontrol = $this->db->query($vergiKontrolQ)->row();
-
-		if ($cariTipi == 0) {
-			if ($vergiKontrol) {
-				$this->session->set_flashdata('cari_kodu_vergino', 'OK');
-				redirect("cari/cari-karti-olustur");
-				die;
-			}
-		}
+		// TC Kimlik/Vergi numarası kontrolü kaldırıldı - aynı numara ile kayıt olmasına izin verildi
+		// Önceki kontroller: cari_tckn ve cari_vergiNumarasi tekrar kontrolleri devre dışı bırakıldı
 
 		if ($cariVergiNoLen == 10)
 			$data["cari_vergiNumarasi"] = $cariVergiNo;
@@ -278,7 +270,6 @@ class Cari extends CI_Controller
 		$data["cari_soyad"] = mb_strtoupper(postval("cari_soyad"), "UTF-8");
 		$data["cari_vergiDairesi"] = mb_strtoupper(postval("cari_vergiDairesi"), "UTF-8");		/*		$data["cari_vergiNumarasi"] = $cariVergiNo;
 				$data["cari_tckn"] = $tckn;*/
-		$data["cari_cariGrupKoduID"] = postval("cari_cariGrupKoduID");
 		$data["cari_ulke"] = postval("cari_ulke");
 		$data["cari_il"] = postval("cari_il");
 		$data["cari_ilce"] = postval("cari_ilce");
@@ -538,7 +529,6 @@ class Cari extends CI_Controller
 		$data["cari_ad"] = mb_strtoupper(postval("cari_ad"), "UTF-8");
 		$data["cari_soyad"] = mb_strtoupper(postval("cari_soyad"), "UTF-8");
 		$data["cari_vergiDairesi"] = mb_strtoupper(postval("cari_vergiDairesi"), "UTF-8");
-		$data["cari_cariGrupKoduID"] = postval("cari_cariGrupKoduID");
 		$data["cari_ulke"] = postval("cari_ulke");
 		$data["cari_il"] = postval("cari_il");
 		$data["cari_ilce"] = postval("cari_ilce");

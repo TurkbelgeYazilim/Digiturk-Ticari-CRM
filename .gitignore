@@ -1,184 +1,64 @@
-.DS_Store
-
-
-
-# DOSYA ORGANİZASYON KURALI
-
-# Geçici, test, debug dosyaları .temp/ klasöründe tutulur
-
-# Yeni geçici dosyalar doğrudan .temp/ klasörüne konulmalıdır
-
-# .temp/ klasörü git'e dahil edilmez (opsiyonel)
-
-
-
-application/cache/*
-
-!application/cache/index.html
-
-
-
-application/logs/*
-
-!application/logs/index.html
-
-
-
-!application/*/.htaccess
-
-
-
-composer.lock
-
-
-
-user_guide_src/build/*
-
-user_guide_src/cilexer/build/*
-
-user_guide_src/cilexer/dist/*
-
-user_guide_src/cilexer/pycilexer.egg-info/*
-
-/vendor/
-
-
-
-# IDE Files
-
-#-------------------------
-
-/nbproject/
-
-.idea/*
-
-
-
-## Sublime Text cache files
-
-*.tmlanguage.cache
-
-*.tmPreferences.cache
-
-*.stTheme.cache
-
-*.sublime-workspace
-
-*.sublime-project
-
-/tests/tests/
-
-/tests/results/
-
-
-
-# Backup files with timestamps
-
-*_20250524*.php
-
-*_20250524*.md
-
-
-
-# Upload directories (keep structure but ignore content)
-
-assets/uploads/*
-
-!assets/uploads/.htaccess
-
-!assets/uploads/senetler/.htaccess
-
-
-
-# OS generated files
-
-Thumbs.db
-
-ehthumbs.db
-
-
-
-# Temporary files
-
-*.tmp
-
-*.temp
-
-*.swp
-
-*.swo
-
-
-
-# Log files
-
-*.log
-
-
-
-# Development and debugging files
-
-test_*.php
-
-test_*.html
-
-*_test.php
-
-*_debug.php
-
-debug_*.php
-
-cleanup_*.php
-
-clear_*.php
-
-live_*.php
-
-real_time_*.php
-
-quick_fix.php
-
-integrity_check.php
-
-table_diagnostic.php
-
-
-
-# VS Code workspace files
-
-.vscode/
-
-.history/
-
-.lh/
-
-
-
-# Backup files
-
-*_backup.php
-
-index_backup.php
-
-
-
-# Documentation and SQL files (excluded from auto-upload)
-
-*.md
-
-*.sql
-
-!README.md
-
-!MUHASE_README.md
-
-# Sensitive configuration files
+# Hassas bilgiler içeren dosyalar
 application/config/database.php
 application/config/sms.php
 application/config/email.php
+assets/tb-ocr-343913-eb3407ba6f45.json
 
-# Environment files
-.env
-.env.local
-.env.production
+# Geçici dosyalar
+tmp/*
+!tmp/.htaccess
+FCPATHtmp/*
 
+# Yüklenen dosyalar
+uploads/*
+!uploads/.htaccess
+assets/uploads/*
+assets/ocr-img/*
+
+# Log dosyaları
+application/logs/*
+!application/logs/.htaccess
+error_log
+error_log.backup
+*.log
+
+# Cache dosyaları
+application/cache/*
+!application/cache/.htaccess
+!application/cache/index.html
+
+# IDE ve editör dosyaları
+.vscode/
+.idea/
+*.sublime-*
+.history/
+
+# Backup dosyaları
+backups/*
+*.sql
+*.backup
+
+# Test dosyaları
+test.php
+test_*.php
+*_test.php
+*_test.html
+sunucu_test.php
+check_debug.txt
+login_debug.txt
+new_form_fields.txt
+
+# Composer
+vendor/
+composer.lock
+
+# Sistem dosyaları
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Export dosyaları
+exports/*
+
+# Session dosyaları
+ci_session*

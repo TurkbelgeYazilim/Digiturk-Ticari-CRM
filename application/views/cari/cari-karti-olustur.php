@@ -122,14 +122,6 @@ $modulSorgula = modulSorgula($firma_ID, 1);
 
 			<!-- /Page Header -->			<?php
 
-			$anaHesap = anaHesapBilgisi();
-
-			$cariGruplariQ = "SELECT * FROM cariGruplari WHERE cariGrup_olusturanAnaHesap = '$anaHesap'";
-
-			$cariGruplari = $this->db->query($cariGruplariQ)->result();
-
-			
-
 			// Edit modu kontrolü
 
 			$isEditMode = isset($cari) && !empty($cari);
@@ -176,6 +168,8 @@ $modulSorgula = modulSorgula($firma_ID, 1);
 							Sorun devam ederse lütfen masaüstü bilgisayar kullanın.
 						</div>
 					<?php endif; ?>
+
+					<!-- TC Kimlik/Vergi Numarası kontrolleri kaldırıldı - aynı numara ile kayıt izni verildi -->
 
 					<div class="card">
 
@@ -260,9 +254,16 @@ $modulSorgula = modulSorgula($firma_ID, 1);
 
 											</div>
 
+
+										</div>
+
+
+
+										<div class="col-md-6">
+								
 											<div class="form-group">
 
-												<label>Cari Adı <span style="color: red;">*</span></label>
+												<label>İşletme Adı <span style="color: red;">*</span></label>
 
 												<input type="text" class="form-control" name="cari_ad" required
 
@@ -272,45 +273,8 @@ $modulSorgula = modulSorgula($firma_ID, 1);
 
 											</div>
 
-										</div>
 
-
-
-										<div class="col-md-6">
-
-											<div class="form-group">
-
-												<label>Cari Grup</label>
-
-												<select class="select" name="cari_cariGrupKoduID" id="cariGrupKodu">
-
-													<option value="0">Seçiniz...</option>
-
-													<?php foreach ($cariGruplari as $cg) { ?>
-
-														<option value="<?= $cg->cariGrup_id ?>" <?php if($isEditMode && $cg->cariGrup_id == $cari->cari_cariGrupKoduID){echo "selected";}elseif(!$isEditMode && $cg->cariGrup_id == 1){echo "selected";} ?>><?= $cg->cariGrup_kodu; ?>
-
-															(<?= $cg->cariGrup_ad; ?>)
-
-														</option>
-
-													<?php } ?>
-
-												</select>
-
-											</div>
-
-											<div class="form-group">
-
-												<label>Yetkili Adı</label>
-
-												<input type="text" class="form-control" name="yetki_adi" id="yetkiAdi"
-
-													   value="<?= $isEditMode ? $cari->yetki_adi : '' ?>">
-
-											</div>											<div class="form-group" id="c_soyad" <?php if($isEditMode && $cari->cari_soyad==null) echo 'style="display: none;"';?>>
-
-												<label>Cari Soyadı <span style="color: red;">*</span></label>
+												<label>Yetkili Adı Soyadı <span style="color: red;">*</span></label>
 
 												<input type="text" class="form-control" name="cari_soyad" id="cariSoyad" 
 
@@ -747,11 +711,11 @@ $modulSorgula = modulSorgula($firma_ID, 1);
 
 			var il_id = $(this).val();
 
-			$.post(base_url + 'home/get_ilceler', {il_id: il_id}, function (result) {				if (result && result.status != 'error') {
+			$.post(base_url + 'cari/getIlceler', {il_id: il_id}, function (result) {				if (result && result.status != 'error') {
 
 					var ilceler = result.data;
 
-				var select = '<div class="ilceler"><div class="form-group"><label>İlçe <span style="color: red;">*</span></label><select id="ilce" name="cari_ilce" class="form-control select" required>';
+				var select = '<div class="form-group"><label>İlçe <span style="color: red;">*</span></label><select id="ilce" name="cari_ilce" class="form-control select" required>';
 
 				select += '<option value="">İlçe Seçiniz</option>';
 
@@ -761,7 +725,7 @@ $modulSorgula = modulSorgula($firma_ID, 1);
 
 				}
 
-				select += '</select></div><div class="form-group"><label>Posta Kodu</label><input type="text" class="form-control" name="cari_postaKodu" maxlength="10" placeholder="Posta kodu giriniz" value="<?= $isEditMode ? $cari->cari_postaKodu : '' ?>"></div></div>';
+				select += '</select></div><div class="form-group"><label>Posta Kodu</label><input type="text" class="form-control" name="cari_postaKodu" maxlength="10" placeholder="Posta kodu giriniz" value="<?= $isEditMode ? $cari->cari_postaKodu : '' ?>"></div>';
 
 				$('div.ilceler').empty().html(select);
 
@@ -1338,10 +1302,6 @@ $modulSorgula = modulSorgula($firma_ID, 1);
 
 			width: '100%'
 
-		});		$("#cariGrupKodu").select2({
-
-			width: '100%'
-
 		});
 
 
@@ -1573,6 +1533,46 @@ function deleteDocument(cariId, dosyaAdi, index) {
 
 }
 
+</script>
+
+<!-- Form Debug ve Validation -->
+<script>
+$(document).ready(function() {
+    // Form submit olayında tüm değerleri debug et
+    $('#myForm').on('submit', function(e) {
+        console.log('Form submit triggered - checking all values:');
+        
+        // İlçe değerini özellikle kontrol et
+        var ilceValue = $('#ilce').val();
+        var ilceName = $('#ilce option:selected').text();
+        
+        console.log('İlçe dropdown value:', ilceValue);
+        console.log('İlçe dropdown text:', ilceName);
+        console.log('İlçe element exists:', $('#ilce').length > 0);
+        console.log('İlçe element disabled:', $('#ilce').prop('disabled'));
+        
+        // Eğer ilçe değeri boşsa uyarı ver
+        if (!ilceValue || ilceValue === '') {
+            console.warn('İlçe değeri boş! Form submit edilmeden önce ilçe seçimi yapılmalı.');
+        }
+        
+        // Tüm form elemanlarını logla
+        $('#myForm input, #myForm select, #myForm textarea').each(function() {
+            var name = $(this).attr('name');
+            var value = $(this).val();
+            if (name) {
+                console.log('Form field:', name, '=', value);
+            }
+        });
+    });
+    
+    // İlçe dropdown değişikliklerini takip et
+    $(document).on('change', '#ilce', function() {
+        var selectedValue = $(this).val();
+        var selectedText = $(this).find('option:selected').text();
+        console.log('İlçe seçimi değişti:', selectedValue, '-', selectedText);
+    });
+});
 </script>
 
 <!-- Mobile Form Fix for Customer Creation -->

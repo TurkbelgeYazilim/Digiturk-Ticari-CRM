@@ -1,8 +1,9 @@
 {
     "require": {
+        "php": ">=7.4",
 		"furkankadioglu/efatura": "^1.9",
-        "vlucas/phpdotenv": "3.6",
-        "phpoffice/phpspreadsheet": "^1.8",
+        "vlucas/phpdotenv": "^5.3",
+        "phpoffice/phpspreadsheet": "^1.24",
         "google/cloud-vision": "^1.5"
     }
 }

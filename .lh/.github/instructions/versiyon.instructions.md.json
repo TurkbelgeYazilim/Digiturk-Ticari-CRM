@@ -1,0 +1,22 @@
+{
+    "sourceFile": ".github/instructions/versiyon.instructions.md",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 1,
+            "patches": [
+                {
+                    "date": 1759925000793,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1759927610684,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,4 +1,6 @@\n ---\r\n applyTo: '**'\r\n ---\r\n-Her başarılı güncelleme, ekleme ve düzeltme'den sonra @changelog.json dosyasını güncellemeyi unutmayın. Ayrıca, yapılan değişikliklerin açıklamalarını ve detaylarını eklemeyi unutmayın.\n\\ No newline at end of file\n+Her başarılı güncelleme, ekleme ve düzeltme'den sonra @changelog.json dosyasını güncellemeyi unutmayın. Ayrıca, yapılan değişikliklerin açıklamalarını ve detaylarını eklemeyi unutmayın.\r\n+\r\n+Github: https://github.com/TurkbelgeYazilim/crm.ilekasoft.com\n\\ No newline at end of file\n"
+                }
+            ],
+            "date": 1759925000793,
+            "name": "Commit-0",
+            "content": "---\r\napplyTo: '**'\r\n---\r\nHer başarılı güncelleme, ekleme ve düzeltme'den sonra @changelog.json dosyasını güncellemeyi unutmayın. Ayrıca, yapılan değişikliklerin açıklamalarını ve detaylarını eklemeyi unutmayın."
+        }
+    ]
+}

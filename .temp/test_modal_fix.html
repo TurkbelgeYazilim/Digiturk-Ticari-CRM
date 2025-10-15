@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modal Function Test</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Modal Function Test</h2>
+        <p>This is a test to verify the openResponsibilityModal() function works correctly.</p>
+        
+        <!-- Test Button -->
+        <button type="button" class="btn btn-primary" onclick="openResponsibilityModal()">
+            <i class="fa fa-plus"></i> Test Modal Open
+        </button>
+        
+        <div class="mt-3">
+            <h5>Debug Information:</h5>
+            <div id="debugInfo" class="border p-3 bg-light"></div>
+        </div>
+    </div>
+
+    <!-- Test Modal -->
+    <div class="modal fade" id="responsibilityModal" tabindex="-1" aria-labelledby="responsibilityModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="responsibilityModalLabel">Test Modal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="responsibilityForm">
+                        <input type="hidden" id="responsibility_id" name="responsibility_id">
+                        <input type="hidden" id="kullanici_id" name="kullanici_id" value="test">
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="modal_ulke_id">Ülke:</label>
+                                <select id="modal_ulke_id" name="ulke_id" class="form-control">
+                                    <option value="">Ülke Seçiniz</option>
+                                    <option value="TR">Türkiye</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="modal_il_id">İl:</label>
+                                <select id="modal_il_id" name="il_id" class="form-control">
+                                    <option value="">İl Seçiniz</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label for="modal_ilce_id">İlçe:</label>
+                                <select id="modal_ilce_id" name="ilce_id" class="form-control">
+                                    <option value="">Önce İl Seçiniz</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="modal_durum">Durum:</label>
+                                <select id="modal_durum" name="durum" class="form-control">
+                                    <option value="1">Aktif</option>
+                                    <option value="0">Pasif</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div id="selectedRegionsPreview" class="mt-3">
+                            <em class="text-muted">Test Preview Area</em>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-primary">Kaydet</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script>
+        function log(message) {
+            console.log(message);
+            const debugDiv = document.getElementById('debugInfo');
+            debugDiv.innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + message + '</div>';
+        }
+
+        // Test implementation of openResponsibilityModal function
+        function openResponsibilityModal() {
+            log('openResponsibilityModal çağrıldı');
+            
+            try {
+                $('#responsibilityModalLabel').text('Yeni Sorumluluk Bölgesi Ekle');
+                $('#responsibilityForm')[0].reset();
+                $('#responsibility_id').val('');
+                
+                log('Form reset completed');
+                
+                // Önce modalı aç
+                $('#responsibilityModal').modal('show');
+                log('Modal show command sent');
+                
+                // Modal açıldıktan sonra Select2'yi başlat
+                $('#responsibilityModal').on('shown.bs.modal.temp', function() {
+                    try {
+                        log('Modal açıldı, Select2 başlatılıyor...');
+                        
+                        // Basic Select2 initialization for testing
+                        $('#modal_ulke_id').select2({
+                            dropdownParent: $('#responsibilityModal'),
+                            placeholder: "Ülke Seçiniz"
+                        });
+                        
+                        $('#modal_il_id').select2({
+                            dropdownParent: $('#responsibilityModal'),
+                            placeholder: "İl Seçiniz",
+                            multiple: true
+                        });
+                        
+                        $('#modal_ilce_id').select2({
+                            dropdownParent: $('#responsibilityModal'),
+                            placeholder: "İlçe Seçiniz",
+                            multiple: true
+                        });
+                        
+                        // Clear preview area
+                        $('#selectedRegionsPreview').html('<em class="text-muted">Henüz bölge seçilmedi</em>');
+                        
+                        log('Modal setup tamamlandı');
+                    } catch (error) {
+                        log('Modal setup hatası: ' + error.message);
+                    }
+                    
+                    // Bu event'i sadece bir kez çalıştır
+                    $(this).off('shown.bs.modal.temp');
+                });
+                
+                log('Modal show komutu gönderildi');
+            } catch (error) {
+                log('openResponsibilityModal hatası: ' + error.message);
+            }
+        }
+        
+        $(document).ready(function() {
+            log('Page loaded successfully');
+            
+            // Test jQuery availability
+            if (typeof $ !== 'undefined') {
+                log('✅ jQuery is available');
+            } else {
+                log('❌ jQuery is not available');
+            }
+            
+            // Test Bootstrap availability
+            if (typeof bootstrap !== 'undefined') {
+                log('✅ Bootstrap is available');
+            } else {
+                log('❌ Bootstrap is not available');
+            }
+            
+            // Test Select2 availability
+            if ($.fn.select2) {
+                log('✅ Select2 is available');
+            } else {
+                log('❌ Select2 is not available');
+            }
+            
+            // Test if modal element exists
+            if ($('#responsibilityModal').length) {
+                log('✅ Modal element found');
+            } else {
+                log('❌ Modal element not found');
+            }
+            
+            // Test if function exists
+            if (typeof openResponsibilityModal === 'function') {
+                log('✅ openResponsibilityModal function exists');
+            } else {
+                log('❌ openResponsibilityModal function does not exist');
+            }
+        });
+    </script>
+</body>
+</html>

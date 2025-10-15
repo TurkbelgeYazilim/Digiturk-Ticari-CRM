@@ -446,6 +446,58 @@
 			font-size: 0.8rem;
 		}
 		
+		/* Hizmet Adı ve Tahsilat Türü sütunlarının genişliklerini eşitle ve tüm sütunları hizala */
+		#stokBilgisiModal #stokTable th:nth-child(1),
+		#stokBilgisiModal #tahsilatDetayTable th:nth-child(1) {
+			width: 5% !important;
+		}
+		
+		#stokBilgisiModal #stokTable th:nth-child(2),
+		#stokBilgisiModal #tahsilatDetayTable th:nth-child(2) {
+			width: 60% !important;
+		}
+		
+		#stokBilgisiModal #stokTable th:nth-child(4),
+		#stokBilgisiModal #tahsilatDetayTable th:nth-child(3) {
+			width: 15% !important;
+		}
+		
+		#stokBilgisiModal #stokTable th:nth-child(6),
+		#stokBilgisiModal #tahsilatDetayTable th:nth-child(4) {
+			width: 15% !important;
+		}
+		
+		#stokBilgisiModal #stokTable th:nth-child(7),
+		#stokBilgisiModal #tahsilatDetayTable th:nth-child(5) {
+			width: 5% !important;
+		}
+		
+		/* TD'ler için de aynı kurallar */
+		#stokBilgisiModal #stokTable td:nth-child(1),
+		#stokBilgisiModal #tahsilatDetayTable td:nth-child(1) {
+			width: 5% !important;
+		}
+		
+		#stokBilgisiModal #stokTable td:nth-child(2),
+		#stokBilgisiModal #tahsilatDetayTable td:nth-child(2) {
+			width: 60% !important;
+		}
+		
+		#stokBilgisiModal #stokTable td:nth-child(4),
+		#stokBilgisiModal #tahsilatDetayTable td:nth-child(3) {
+			width: 15% !important;
+		}
+		
+		#stokBilgisiModal #stokTable td:nth-child(6),
+		#stokBilgisiModal #tahsilatDetayTable td:nth-child(4) {
+			width: 15% !important;
+		}
+		
+		#stokBilgisiModal #stokTable td:nth-child(7),
+		#stokBilgisiModal #tahsilatDetayTable td:nth-child(5) {
+			width: 5% !important;
+		}
+		
 		/* Satış Sözleşmesi Modal Styles */
 		#satisSozlesmeModal .modal-body {
 			max-height: 70vh;
@@ -875,18 +927,16 @@
 													<td>
 														<?php if (isset($veri->satis_sozlesme_id) && !empty($veri->satis_sozlesme_id)): ?>
 															<div class="satis-hizmet-container">
-																<button class="btn btn-link text-decoration-none p-1 border-0"
+																<button class="btn btn-sm btn-success"
 																		onclick="openStokBilgisiModal(<?= $veri->satis_sozlesme_id ?>, <?= $veri->cari_id ?>, '<?= htmlspecialchars($veri->cari_isletme, ENT_QUOTES) ?>')"
-																		title="Stok bilgilerini görüntüle ve düzenle (ID: <?= $veri->satis_sozlesme_id ?>)"
-																		style="cursor: pointer; color: #28a745; background: none;">
+																		title="Stok bilgilerini görüntüle ve düzenle (ID: <?= $veri->satis_sozlesme_id ?>)">
 																	<?php if (isset($veri->satis_sozlesme_hizmeti) && !empty($veri->satis_sozlesme_hizmeti)): ?>
 																		<i class="fa fa-box mr-1"></i>
 																		<?= htmlspecialchars($veri->satis_sozlesme_hizmeti) ?>
 																	<?php else: ?>
-																		<i class="fa fa-boxes mr-1"></i>
+																		<i class="fa fa-plus mr-1"></i>
 																		Stok Bilgileri
 																	<?php endif; ?>
-																	<i class="fa fa-edit ml-1" style="font-size: 0.8em;"></i>
 																</button>
 																<?php if (isset($veri->toplam_satis_sayisi) && $veri->toplam_satis_sayisi > 1): ?>
 																	<br>
@@ -1968,26 +2018,8 @@ function showImageModal(imageSrc, title) {
 window.openSatisSozlesmeModal = function(cariId, cariIsletme) {
 	console.log('openSatisSozlesmeModal called with:', { cariId, cariIsletme });
 	
-	// Modal başlığını güncelle
-	$('#satisSozlesmeModalLabel').html('<i class="fa fa-file-contract mr-2"></i>Satış Sözleşmesi Oluştur - ' + cariIsletme);
-	
-	// Müşteri bilgilerini doldur
-	$('#modalCariID').val(cariId);
-	$('#modalCariAdi').val(cariIsletme);
-	
-	// Form'u sıfırla
-	$('#satisSozlesmeForm')[0].reset();
-	$('#modalCariID').val(cariId);
-	$('#modalCariAdi').val(cariIsletme);
-	$('input[name="satis_faturaTarihi"]').val('<?= date('Y-m-d') ?>');
-	
-	// Tablo hesaplamalarını sıfırla
-	updateModalTotals();
-	
-	// Event'leri başlat
-	initializeModalEvents();
-	
-	$('#satisSozlesmeModal').modal('show');
+	// Yeni Hizmet Bilgileri modalını aç (satis_id = 0 yeni kayıt için)
+	openStokBilgisiModal(0, cariId, cariIsletme);
 }
 
 // Modal tablo hesaplamaları
@@ -2427,7 +2459,7 @@ $('#satisSozlesmeForm').on('submit', function(e) {
 window.openStokBilgisiModal = function(satisId, cariId, cariIsletme) {
 	console.log('openStokBilgisiModal called with:', { satisId, cariId, cariIsletme });
 	
-	$('#stokBilgisiModalLabel').html('<i class="fa fa-boxes mr-2"></i>Hizmet Bilgileri - ' + cariIsletme);
+	$('#stokBilgisiModalLabel').html('<i class="fa fa-boxes mr-2"></i>Hizmet Bilgileri - ' + cariIsletme + ' <small class="text-muted">(Cari ID: ' + cariId + ')</small>');
 	
 	// Modal'da satis_id ve cari_id'yi sakla
 	$('#stokBilgisiModal').data('satisId', satisId);
@@ -2453,6 +2485,49 @@ window.openStokBilgisiModal = function(satisId, cariId, cariIsletme) {
 			
 			if (response && response.success) {
 				let html = `
+					<!-- Sözleşme Bilgileri -->
+						<div class="card-body">
+							<div class="row">
+								<div class="col-md-3">
+									<div class="form-group">
+										<label>Sözleşme Tarihi <span class="text-danger">*</span></label>
+										<input type="date" class="form-control" id="sozlesmeTarihi" 
+											   value="${response.satis_info?.satis_faturaTarihi || ''}" required>
+									</div>
+								</div>
+								<div class="col-md-3">
+									<div class="form-group">
+										<label>Sözleşme No</label>
+										<input type="text" class="form-control" id="sozlesmeNo" 
+											   value="${response.satis_info?.satis_faturaNo || ''}" 
+											   placeholder="Sözleşme numarası">
+									</div>
+								</div>
+								<div class="col-md-3">
+									<div class="form-group">
+										<label>Açıklama</label>
+										<textarea class="form-control" id="sozlesmeAciklama" rows="1" 
+												  placeholder="Sözleşme açıklaması">${response.satis_info?.satis_aciklama || ''}</textarea>
+									</div>
+								</div>
+								<div class="col-md-3">
+									<div class="form-group">
+										<label>Satış Sözleşmesi Görsel</label>
+										<div class="d-flex gap-2">
+											<button type="button" class="btn btn-sm btn-primary" onclick="satirGorselYukle(${satisId})">
+												<i class="fa fa-upload"></i> Yükle
+											</button>
+											<button type="button" class="btn btn-sm btn-info" onclick="satirGorselleriGoruntule('${response.satis_info?.satis_dosya || ''}')">
+												<i class="fa fa-eye"></i> Görüntüle
+											</button>
+										</div>
+										<input type="hidden" id="satisDosya" value="${response.satis_info?.satis_dosya || ''}">
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					
 					<div class="row mb-3">
 						<div class="col-md-12">
 							<button type="button" class="btn btn-primary btn-sm" onclick="stokSatiriEkle()">
@@ -2465,11 +2540,11 @@ window.openStokBilgisiModal = function(satisId, cariId, cariIsletme) {
 							<thead class="thead-light">
 								<tr>
 									<th width="5%">ID</th>
-									<th width="65%">Hizmet Adı</th>
+									<th width="60%">Hizmet Adı</th>
 									<th width="10%" style="display: none;">Miktar</th>
 									<th width="15%">Birim Fiyat (KDV Dahil)</th>
 									<th width="10%" style="display: none;">KDV (%)</th>
-									<th width="10%">Kullanıcı Sayısı</th>
+									<th width="15%">Abonelik Bitiş Tarihi</th>
 									<th width="5%">İşlem</th>
 								</tr>
 							</thead>
@@ -2512,8 +2587,8 @@ window.openStokBilgisiModal = function(satisId, cariId, cariIsletme) {
 									<th width="5%" class="text-center">ID</th>
 									<th width="60%">Tahsilat Türü / Detay</th>
 									<th width="15%" class="text-center">Toplam</th>
-									<th width="10%" class="text-center">—</th>
-									<th width="10%" class="text-center">Onay</th>
+									<th width="15%" class="text-center">—</th>
+									<th width="5%" class="text-center">Onay</th>
 								</tr>
 							</thead>
 							<tbody id="tahsilatDetayTableBody">
@@ -2737,9 +2812,9 @@ function createStokRow(index, data = {}) {
 				</select>
 			</td>
 			<td>
-				<input type="number" class="form-control kullaniciSayisi" name="kullaniciSayisi[]" 
-					   value="${data.satisStok_kullanici_sayisi || ''}" min="0" 
-					   placeholder="Kullanıcı sayısı">
+				<input type="date" class="form-control abonelikBitisTarihi" name="abonelikBitisTarihi[]" 
+					   value="${data.satisStok_abonelikBitisTarihi || ''}" 
+					   placeholder="Abonelik Bitiş Tarihi">
 			</td>
 			<td>
 				<button type="button" class="btn btn-danger btn-sm" onclick="stokSatiriSil(this)" 
@@ -3109,16 +3184,16 @@ $('#stokBilgisiKaydetBtn').click(function() {
 		const miktarEl = row.querySelector('.miktar');
 		const birimFiyatEl = row.querySelector('.birimFiyat');
 		const kdvOraniEl = row.querySelector('.kdvOrani');
-		const kullaniciSayisiEl = row.querySelector('.kullaniciSayisi');
+		const abonelikBitisTarihiEl = row.querySelector('.abonelikBitisTarihi');
 		
-		if (!satisStokIdEl || !stokIdEl || !miktarEl || !birimFiyatEl || !kdvOraniEl || !kullaniciSayisiEl) {
+		if (!satisStokIdEl || !stokIdEl || !miktarEl || !birimFiyatEl || !kdvOraniEl || !abonelikBitisTarihiEl) {
 			console.warn('Bazı form elementleri bulunamadı:', {
 				satisStokId: !!satisStokIdEl,
 				stokId: !!stokIdEl,
 				miktar: !!miktarEl,
 				birimFiyat: !!birimFiyatEl,
 				kdvOrani: !!kdvOraniEl,
-				kullaniciSayisi: !!kullaniciSayisiEl
+				abonelikBitisTarihi: !!abonelikBitisTarihiEl
 			});
 			return;
 		}
@@ -3172,7 +3247,7 @@ $('#stokBilgisiKaydetBtn').click(function() {
 			miktar: parseTurkishNumber(miktarEl.value),
 			birim_fiyat: parseTurkishNumber(birimFiyatEl.value),
 			kdv_orani: kdvOraniEl.value,
-			kullanici_sayisi: kullaniciSayisiEl.value
+			abonelik_bitis_tarihi: abonelikBitisTarihiEl.value
 		};
 		
 		console.log('Stok data prepared:', {
@@ -3191,6 +3266,18 @@ $('#stokBilgisiKaydetBtn').click(function() {
 		return;
 	}
 	
+	// Sözleşme bilgilerini al
+	const sozlesmeTarihi = document.getElementById('sozlesmeTarihi').value;
+	const sozlesmeNo = document.getElementById('sozlesmeNo').value;
+	const sozlesmeAciklama = document.getElementById('sozlesmeAciklama').value;
+	
+	// Sözleşme tarihi zorunlu
+	if (!sozlesmeTarihi) {
+		alert('Sözleşme tarihi zorunludur.');
+		document.getElementById('sozlesmeTarihi').focus();
+		return;
+	}
+	
 	// AJAX ile kaydet
 	$.ajax({
 		url: '<?= base_url("stok_kaydet_endpoint.php") ?>',
@@ -3198,7 +3285,10 @@ $('#stokBilgisiKaydetBtn').click(function() {
 		data: {
 			satis_id: satisId,
 			cari_id: cariId,
-			stok_bilgileri: formData
+			stok_bilgileri: formData,
+			sozlesme_tarihi: sozlesmeTarihi,
+			sozlesme_no: sozlesmeNo,
+			sozlesme_aciklama: sozlesmeAciklama
 		},
 		dataType: 'json',
 		beforeSend: function() {
@@ -4328,6 +4418,168 @@ window.stokGorselSil = function(gorselId, satisStokId) {
 };
 
 });
+
+// Satış Sözleşmesi Görsel Yükleme Fonksiyonu
+window.satirGorselYukle = function(satisId) {
+	if (!satisId) {
+		Swal.fire('Hata!', 'Satış ID bulunamadı.', 'error');
+		return;
+	}
+	
+	Swal.fire({
+		title: 'Satış Sözleşmesi Görsel Yükle',
+		html: `
+			<div class="form-group">
+				<label>Görsel/Dosya Seçin:</label>
+				<div class="custom-file">
+					<input type="file" class="custom-file-input" id="satirGorselFile" multiple accept="image/*,.pdf">
+					<label class="custom-file-label">Dosya(lar) seçin...</label>
+				</div>
+				<small class="text-muted">JPG, PNG veya PDF formatında dosyalar yükleyebilirsiniz.</small>
+			</div>
+			<div id="satirSelectedFiles" style="display: none;">
+				<h6>Seçilen Dosyalar:</h6>
+				<ul id="satirFileList" class="list-unstyled"></ul>
+			</div>
+		`,
+		showCancelButton: true,
+		confirmButtonText: 'Yükle',
+		cancelButtonText: 'İptal',
+		preConfirm: () => {
+			const files = document.getElementById('satirGorselFile').files;
+			if (files.length === 0) {
+				Swal.showValidationMessage('Lütfen en az bir dosya seçin');
+				return false;
+			}
+			return files;
+		}
+	}).then((result) => {
+		if (result.isConfirmed) {
+			const files = result.value;
+			const formData = new FormData();
+			
+			formData.append('satis_id', satisId);
+			
+			for (let i = 0; i < files.length; i++) {
+				formData.append('satis_gorseller[]', files[i]);
+			}
+			
+			$.ajax({
+				url: '<?= base_url("satis_gorsel_yukle_endpoint.php") ?>',
+				method: 'POST',
+				data: formData,
+				processData: false,
+				contentType: false,
+				beforeSend: function() {
+					Swal.fire({
+						title: 'Yükleniyor...',
+						html: 'Dosyalar yükleniyor, lütfen bekleyin...',
+						allowOutsideClick: false,
+						didOpen: () => {
+							Swal.showLoading();
+						}
+					});
+				},
+				success: function(response) {
+					if (response.success) {
+						Swal.fire('Başarılı!', 'Görseller başarıyla yüklendi.', 'success');
+						$('#satisDosya').val(response.satis_dosya);
+					} else {
+						Swal.fire('Hata!', response.message || 'Görsel yüklenirken hata oluştu.', 'error');
+					}
+				},
+				error: function() {
+					Swal.fire('Hata!', 'Görsel yüklenirken beklenmeyen bir hata oluştu.', 'error');
+				}
+			});
+		}
+	});
+	
+	$(document).off('change', '#satirGorselFile').on('change', '#satirGorselFile', function() {
+		const files = this.files;
+		const label = $(this).next('.custom-file-label');
+		const selectedFiles = $('#satirSelectedFiles');
+		const fileList = $('#satirFileList');
+		
+		if (files.length === 0) {
+			selectedFiles.hide();
+			label.text('Dosya(lar) seçin...');
+			return;
+		}
+		
+		if (files.length === 1) {
+			label.text(files[0].name);
+		} else {
+			label.text(files.length + ' dosya seçildi');
+		}
+		
+		fileList.empty();
+		for (let i = 0; i < files.length; i++) {
+			const file = files[i];
+			const fileSize = (file.size / 1024 / 1024).toFixed(2);
+			const fileType = file.type.startsWith('image/') ? 'Resim' : (file.type === 'application/pdf' ? 'PDF' : 'Dosya');
+			
+			fileList.append(`
+				<li class="border rounded p-2 mb-1 bg-light">
+					<i class="fa fa-${file.type.startsWith('image/') ? 'image' : 'file-pdf'} text-${file.type.startsWith('image/') ? 'success' : 'danger'} mr-2"></i>
+					<strong>${file.name}</strong>
+					<small class="text-muted ml-2">(${fileType}, ${fileSize} MB)</small>
+				</li>
+			`);
+		}
+		
+		selectedFiles.show();
+	});
+};
+
+// Satış Sözleşmesi Görsellerini Görüntüleme Fonksiyonu
+window.satirGorselleriGoruntule = function(satisDosya) {
+	if (!satisDosya || satisDosya.trim() === '') {
+		Swal.fire('Bilgi', 'Henüz yüklenmiş görsel bulunmuyor.', 'info');
+		return;
+	}
+	
+	const dosyalar = satisDosya.split(',').map(d => d.trim()).filter(d => d);
+	
+	if (dosyalar.length === 0) {
+		Swal.fire('Bilgi', 'Henüz yüklenmiş görsel bulunmuyor.', 'info');
+		return;
+	}
+	
+	const baseUrl = '<?= base_url("assets/uploads/") ?>';
+	
+	let gorsellerHTML = '<div class="row">';
+	dosyalar.forEach((dosya, index) => {
+		const dosyaUrl = baseUrl + dosya;
+		const isPDF = dosya.toLowerCase().endsWith('.pdf');
+		
+		gorsellerHTML += `
+			<div class="col-md-4 mb-3">
+				<div class="card">
+					<div class="card-body text-center">
+						${isPDF ? 
+							`<i class="fa fa-file-pdf fa-5x text-danger mb-2"></i>
+							 <p class="mb-2"><small>${dosya.split('/').pop()}</small></p>` :
+							`<img src="${dosyaUrl}" class="img-fluid mb-2" style="max-height: 200px; object-fit: contain;">`
+						}
+						<a href="${dosyaUrl}" target="_blank" class="btn btn-sm btn-primary btn-block">
+							<i class="fa fa-external-link-alt"></i> Yeni Sekmede Aç
+						</a>
+					</div>
+				</div>
+			</div>
+		`;
+	});
+	gorsellerHTML += '</div>';
+	
+	Swal.fire({
+		title: 'Satış Sözleşmesi Görselleri',
+		html: gorsellerHTML,
+		width: '80%',
+		showCloseButton: true,
+		showConfirmButton: false
+	});
+};
 
 // Tek veri türü silme fonksiyonu
 window.tekVeriSil = function(tabloKodu, cariId, tabloAdi) {

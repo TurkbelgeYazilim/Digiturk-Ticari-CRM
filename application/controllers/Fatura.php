@@ -3405,7 +3405,7 @@ class Fatura extends CI_Controller
 
 			if (!empty($etiket)) {
 
-				$sorgu2 = "AND satis_faturaEtiketID = '$etiket'";
+				$sorgu2 = "AND sf.satis_faturaEtiketID = '$etiket'";
 
 			} else {
 
@@ -3439,13 +3439,13 @@ class Fatura extends CI_Controller
 
 	        if (!empty($ayArama)) {
 
-	            $sorgu3 = "AND month(satis_faturaTarihi) = '$ayArama'";
+	            $sorgu3 = "AND month(sf.satis_faturaTarihi) = '$ayArama'";
 
 	        }else $sorgu3="";
 
 	        
 
-			$countq = "SELECT COUNT(*) as total FROM satisFaturasi WHERE satis_InvoiceType IS NULL AND satis_olusturan IN ($allowed_user_ids_str) AND satis_faturaNo LIKE '%$faturaNo%' " . $sorgu2 . " " . $sorgu1 . " ".$sorgu3." ";
+			$countq = "SELECT COUNT(*) as total FROM satisFaturasi sf INNER JOIN cari c ON sf.satis_cariID = c.cari_id WHERE sf.satis_InvoiceType IS NULL AND c.cari_olusturan IN ($allowed_user_ids_str) AND sf.satis_faturaNo LIKE '%$faturaNo%' " . $sorgu2 . " " . $sorgu1 . " ".$sorgu3." ";
 
 			$countexe = $this->db->query($countq)->row();
 
@@ -3453,17 +3453,17 @@ class Fatura extends CI_Controller
 
 
 
-			$sorgu = "SELECT * FROM satisFaturasi WHERE satis_InvoiceType IS NULL AND satis_olusturan IN ($allowed_user_ids_str) AND satis_faturaNo LIKE '%$faturaNo%' " . $sorgu2 . " " . $sorgu1 ." ". $sorgu3 ." " . $sira . " LIMIT $pagem,$limit";
+			$sorgu = "SELECT sf.* FROM satisFaturasi sf INNER JOIN cari c ON sf.satis_cariID = c.cari_id WHERE sf.satis_InvoiceType IS NULL AND c.cari_olusturan IN ($allowed_user_ids_str) AND sf.satis_faturaNo LIKE '%$faturaNo%' " . $sorgu2 . " " . $sorgu1 ." ". $sorgu3 ." " . $sira . " LIMIT $pagem,$limit";
 
 		} else {
 
-			$countq = "SELECT COUNT(*) as total FROM satisFaturasi WHERE satis_InvoiceType IS NULL AND satis_olusturan IN ($allowed_user_ids_str)";
+			$countq = "SELECT COUNT(*) as total FROM satisFaturasi sf INNER JOIN cari c ON sf.satis_cariID = c.cari_id WHERE sf.satis_InvoiceType IS NULL AND c.cari_olusturan IN ($allowed_user_ids_str)";
 
 			$countexe = $this->db->query($countq)->row();
 
 			$count = $countexe->total;
 
-			$sorgu = "SELECT * FROM satisFaturasi WHERE satis_InvoiceType IS NULL AND satis_olusturan IN ($allowed_user_ids_str) ORDER BY satis_id DESC LIMIT $pagem,$limit";
+			$sorgu = "SELECT sf.* FROM satisFaturasi sf INNER JOIN cari c ON sf.satis_cariID = c.cari_id WHERE sf.satis_InvoiceType IS NULL AND c.cari_olusturan IN ($allowed_user_ids_str) ORDER BY sf.satis_id DESC LIMIT $pagem,$limit";
 
 		}
 
@@ -3487,7 +3487,7 @@ class Fatura extends CI_Controller
 
 		file_put_contents($debug_file, "Allowed User IDs: " . implode(', ', $allowed_user_ids) . "\n", FILE_APPEND);
 
-		file_put_contents($debug_file, "Kısıtlama: Dashboard mantığı - Kendisi + bağlı kullanıcılar (satis_olusturan IN ($allowed_user_ids_str))\n", FILE_APPEND);
+		file_put_contents($debug_file, "Kısıtlama: Dashboard mantığı - Kendisi + bağlı kullanıcılar (cari_olusturan IN ($allowed_user_ids_str))\n", FILE_APPEND);
 
 		file_put_contents($debug_file, "Count Result: $count\n", FILE_APPEND);
 
@@ -6839,8 +6839,23 @@ class Fatura extends CI_Controller
 
 
 		if ($faturaTipi == "satis") {
+			
+			// Dashboard'daki "Son Satışlarım" mantığı: Kendisi + bağlı kullanıcılar
+			$control = session("r", "login_info");
+			$u_id = $control->kullanici_id;
+			
+			$allowed_user_ids = array($u_id);
+			if ($u_id > 0) {
+				$bağlı_kullanicilarQ = "SELECT kullanici_id FROM kullanicilar WHERE kullanici_sorumluMudur = '$u_id'";
+				$bağlı_kullanicilar = $this->db->query($bağlı_kullanicilarQ)->result();
+				
+				foreach ($bağlı_kullanicilar as $user) {
+					$allowed_user_ids[] = $user->kullanici_id;
+				}
+			}
+			$allowed_user_ids_str = implode(',', $allowed_user_ids);
 
-			$faturaQ = "SELECT * FROM satisFaturasi WHERE satis_id = '$faturaID' AND satis_olusturanAnaHesap = '$anaHesap'";
+			$faturaQ = "SELECT sf.* FROM satisFaturasi sf INNER JOIN cari c ON sf.satis_cariID = c.cari_id WHERE sf.satis_id = '$faturaID' AND c.cari_olusturan IN ($allowed_user_ids_str)";
 
 			$faturaExe = $this->db->query($faturaQ)->row();
 
@@ -6848,7 +6863,7 @@ class Fatura extends CI_Controller
 
 
 
-			$cariQ = "SELECT * FROM cari WHERE cari_id = '$faturaExe->satis_cariID' AND cari_olusturanAnaHesap = '$anaHesap' ";
+			$cariQ = "SELECT * FROM cari WHERE cari_id = '$faturaExe->satis_cariID' AND cari_olusturan IN ($allowed_user_ids_str)";
 
 			$data["cari"] = $this->db->query($cariQ)->row();
 

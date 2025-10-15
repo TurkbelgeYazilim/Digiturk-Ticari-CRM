@@ -882,27 +882,33 @@ class Home extends CI_Controller
 
 
 	public function yeniTicket(){
-
+		// Upload library'yi yükle
+		$this->load->library('upload');
+		
+		// Session kontrolü
 		$control2 = session("r", "login_info");
+		if(!$control2 || !isset($control2->kullanici_id)) {
+			// Session yoksa login sayfasına yönlendir
+			redirect(base_url("check"));
+			return;
+		}
 
 		$u_id = $control2->kullanici_id;
 
-
+		// POST veri kontrolü - sadece form gönderilmişse işlem yap
+		if(!$_POST || empty(postval("destek_title"))) {
+			// POST verisi yoksa destek sayfasına yönlendir
+			redirect(base_url('destek'));
+			return;
+		}
 
 		$anaHesap = anaHesapBilgisi();
 
-
-
 		date_default_timezone_set('Europe/Istanbul');
-
 		$tarih = (new DateTime('now'))->format('Y.m.d H:i:s');
 
-
-
 		$data["destek_title"] = postval("destek_title");
-
 		$data["destek_department"] = postval("destek_department");
-
 		$data["destek_priority"] = postval("destek_priority");
 
 		$data["destek_status"] = 1;
@@ -1059,28 +1065,20 @@ class Home extends CI_Controller
 
 		}
 
-
-
 		$mail_config = Array(
-
 			'protocol' => 'smtp',
-
-			'smtp_crypto' => 'ssl',
-
-			'smtp_host' => 'mail.ilekasoft.com',
-
-			'smtp_port' => 465,
-
-			'smtp_user' => 'ticket@ilekasoft.com',
-
-			'smtp_pass' => '0oqZknrfOw',
-
+			'smtp_crypto' => 'tls',
+			'smtp_host' => 'smtp.gmail.com',
+			'smtp_port' => 587,
+			'smtp_user' => 'bilgi@ileka.com.tr',
+			'smtp_pass' => 'qcel gfig rgao qefo',
 			'charset'   => 'utf-8',
-
 			'mailtype'  => 'html',
-
-			'wordwrap' => TRUE
-
+			'wordwrap' => FALSE,
+			'newline' => "\r\n",
+			'crlf' => "\r\n",
+			'dsn' => FALSE,
+			'multipart' => 'mixed'
 		);
 
 
@@ -1095,20 +1093,16 @@ class Home extends CI_Controller
 
 		
 
-		// Mail iÃ§eriÄŸini zenginleÅŸtir
+		// Mail içeriğini zenginleştir
 
-		$mail_baslik = 'Ä°lekaSoft CRM - Yeni Destek Talebi #' . ($son_talep ? $son_talep->destek_id : 'N/A');
+		$mail_baslik = 'İlekaSoft CRM - Yeni Destek Talebi #' . ($son_talep ? $son_talep->destek_id : 'N/A');
 
 		$mail_mesaj = '
-
 <!DOCTYPE html>
-
 <html>
-
 <head>
-
-    <meta charset="utf-8">
-
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="UTF-8">
     <style>
 
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4; }
@@ -1202,26 +1196,44 @@ class Home extends CI_Controller
 
 
 		$this->load->library('email', $mail_config);
-
+		$this->email->clear(TRUE);
 		$this->email->set_newline("\r\n");
-
+		$this->email->set_crlf("\r\n");
+		$this->email->set_header('Content-Type', 'text/html; charset=UTF-8');
+		$this->email->set_header('Content-Transfer-Encoding', '8bit');
 		$this->email->to("talep@turkbelge.com.tr");
-
-		$this->email->from("ticket@ilekasoft.com","ilekasoft.com");
-
+		$this->email->from("bilgi@ileka.com.tr","İleka CRM Sistemi");
 		$this->email->subject($mail_baslik);
-
 		$this->email->message($mail_mesaj);
 
-		if (!$this->email->send()){
-
-			echo $this->email->print_debugger();
-
+		// E-posta göndermeyi dene ama hata olursa kullanıcıyı bilgilendir
+		try {
+			// Debug: E-posta gönderme öncesi log
+			file_put_contents('debug_email.log', "E-posta gönderiliyor: " . date('Y-m-d H:i:s') . "\n", FILE_APPEND | LOCK_EX);
+			file_put_contents('debug_email.log', "Alıcı: talep@turkbelge.com.tr\n", FILE_APPEND | LOCK_EX);
+			file_put_contents('debug_email.log', "Konu: " . $mail_baslik . "\n", FILE_APPEND | LOCK_EX);
+			
+			if (!$this->email->send()) {
+				// E-posta gönderilemedi ama talep oluşturuldu
+				$debug_info = $this->email->print_debugger();
+				file_put_contents('debug_email.log', "E-posta hatası:\n" . $debug_info . "\n", FILE_APPEND | LOCK_EX);
+				$this->session->set_flashdata('email_uyari', 'Destek talebiniz başarıyla oluşturuldu ancak bildirim e-postası gönderilemedi.');
+			} else {
+				// E-posta başarıyla gönderildi
+				file_put_contents('debug_email.log', "E-posta başarıyla gönderildi!\n", FILE_APPEND | LOCK_EX);
+				$this->session->set_flashdata('destek_ok', 'OK');
+			}
+		} catch (Exception $e) {
+			// E-posta hatası - talep yine de oluşturuldu
+			file_put_contents('debug_email.log', "E-posta exception: " . $e->getMessage() . "\n", FILE_APPEND | LOCK_EX);
+			$this->session->set_flashdata('email_uyari', 'Destek talebiniz başarıyla oluşturuldu ancak bildirim e-postası gönderilemedi.');
 		}
 
-
-
+		// Her durumda success flash message'ı set et
 		$this->session->set_flashdata('destek_ok','OK');
+		
+		// Destek sayfasına yönlendir
+		redirect(base_url('destek'));
 
 		redirect($_SERVER['HTTP_REFERER']);
 
@@ -1230,10 +1242,24 @@ class Home extends CI_Controller
 
 
 	public function destekdetay($id){
+		// Emergency debug - sayfanın başında çıktı
+		echo "<!-- DEBUG: Controller destekdetay çalıştı, ID: $id -->";
+		
+		// Debug: Controller başlangıcı
+		file_put_contents('debug_controller.log', "Controller başlatıldı: " . date('Y-m-d H:i:s') . "\n", FILE_APPEND | LOCK_EX);
 
 		$control2 = session("r", "login_info");
+		
+		// Session kontrolü
+		if(!$control2 || !isset($control2->kullanici_id)) {
+			file_put_contents('debug_controller.log', "Session hatası!\n", FILE_APPEND | LOCK_EX);
+			echo "<div class='alert alert-danger'>Giriş yapmanız gerekiyor!</div>";
+			echo "<a href='" . base_url('check') . "'>Giriş Yap</a>";
+			return;
+		}
 
 		$u_id = $control2->kullanici_id;
+		file_put_contents('debug_controller.log', "User ID: $u_id\n", FILE_APPEND | LOCK_EX);
 
 
 
@@ -1243,7 +1269,19 @@ class Home extends CI_Controller
 
 		$data["yanitlar"] = $this->db->query("SELECT * FROM destek_yanit WHERE dyanit_destekID = $id")->result();
 
-
+		// Debug log
+		$yanit_sayisi = is_array($data["yanitlar"]) ? count($data["yanitlar"]) : 0;
+		error_log("DEBUG: Destek ID: $id, Talep bulundu: " . ($data["talep"] ? 'Evet' : 'Hayır') . ", Yanıt sayısı: $yanit_sayisi");
+		
+		// Debug dosyasına yaz
+		$debug_text = "DEBUG " . date('Y-m-d H:i:s') . ": ID=$id, Talep=" . ($data["talep"] ? 'VAR' : 'YOK') . ", Yanıt=$yanit_sayisi\n";
+		file_put_contents('debug_controller.log', $debug_text, FILE_APPEND | LOCK_EX);
+		
+		// Talep bulunamadıysa hata sayfasına yönlendir
+		if(!$data["talep"]) {
+			redirect("home/hata2/3");
+			return;
+		}
 
 		$isRead = $data["talep"]->destek_isRead;
 
@@ -1422,25 +1460,19 @@ class Home extends CI_Controller
 			if($talep->destek_olusturan == $u_id) {
 
 				$mail_config = Array(
-
 					'protocol' => 'smtp',
-
-					'smtp_crypto' => 'ssl',
-
-					'smtp_host' => 'mail.ilekasoft.com',
-
-					'smtp_port' => 465,
-
-					'smtp_user' => 'ticket@ilekasoft.com',
-
-					'smtp_pass' => '0oqZknrfOw',
-
+					'smtp_crypto' => 'tls',
+					'smtp_host' => 'smtp.gmail.com',
+					'smtp_port' => 587,
+					'smtp_user' => 'bilgi@ileka.com.tr',
+					'smtp_pass' => 'qcel gfig rgao qefo',
 					'charset'   => 'utf-8',
-
 					'mailtype'  => 'html',
-
-					'wordwrap' => TRUE
-
+					'wordwrap' => FALSE,
+					'newline' => "\r\n",
+					'crlf' => "\r\n",
+					'dsn' => FALSE,
+					'multipart' => 'mixed'
 				);
 
 
@@ -1453,20 +1485,16 @@ class Home extends CI_Controller
 
 				
 
-				// Mail iÃ§eriÄŸini zenginleÅŸtir
+				// Mail içeriğini zenginleştir
 
-				$mail_baslik = '[TALEP] Ä°lekaSoft CRM - Destek Talebine YanÄ±t #' . $destek_id;
+				$mail_baslik = '[TALEP] İlekaSoft CRM - Destek Talebine Yanıt #' . $destek_id;
 
 				$admin_mail_mesaj = '
-
 <!DOCTYPE html>
-
 <html>
-
 <head>
-
-    <meta charset="utf-8">
-
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="UTF-8">
     <style>
 
         body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4; }
@@ -1574,15 +1602,14 @@ class Home extends CI_Controller
 
 
 				$this->load->library('email', $mail_config);
-
+				$this->email->clear(TRUE);
 				$this->email->set_newline("\r\n");
-
+				$this->email->set_crlf("\r\n");
+				$this->email->set_header('Content-Type', 'text/html; charset=UTF-8');
+				$this->email->set_header('Content-Transfer-Encoding', '8bit');
 				$this->email->to("talep@turkbelge.com.tr");
-
-				$this->email->from("ticket@ilekasoft.com","ilekasoft.com");
-
+				$this->email->from("bilgi@ileka.com.tr","İleka CRM");
 				$this->email->subject($mail_baslik);
-
 				$this->email->message($admin_mail_mesaj);
 
 				if (!$this->email->send()){
@@ -1961,6 +1988,12 @@ class Home extends CI_Controller
 		} catch (Exception $e) {
 			echo json_encode(['success' => false, 'message' => 'Changelog verileri yüklenirken hata oluştu: ' . $e->getMessage()]);
 		}
+	}
+
+	public function testMethod() {
+		echo "Test method çalışıyor!<br>";
+		echo "REQUEST_URI: " . $_SERVER['REQUEST_URI'] . "<br>";
+		echo "Bu sayfa çalışıyorsa CodeIgniter routing düzgün çalışıyor.";
 	}
 
 }

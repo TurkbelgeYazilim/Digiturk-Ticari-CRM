@@ -73,10 +73,11 @@ error_log("DEBUG: POST data: " . print_r($_POST, true));
 error_log("DEBUG: Raw POST: " . $raw_post);
 error_log("DEBUG: Parsed POST: " . print_r($post_data, true));
 
-if (!$satis_id) {
+// satis_id null ise hata, ama 0 olabilir (yeni kayıt için)
+if ($satis_id === null || $satis_id === '') {
     // Debug: mevcut satış ID'leri göster
     try {
-        $mysqli = new mysqli($host, $username, $password, $dbname);
+        $mysqli = new mysqli('localhost', 'ilekasoft_crmuser', 'KaleW356!', 'ilekasoft_crmdb');
         $mysqli->set_charset("utf8mb4");
         
         $sample_query = "SELECT DISTINCT satisStok_satisFaturasiID FROM satisFaturasiStok LIMIT 10";
@@ -124,38 +125,42 @@ try {
         throw new Exception("MySQL connection failed: " . $mysqli->connect_error);
     }
     
-    // Simplified query with only existing columns
-    $query = "
-        SELECT 
-            sfs.satisStok_id,
-            sfs.satisStok_satisFaturasiID,
-            sfs.satisStok_stokID as stok_id,
-            sfs.satisStok_miktar,
-            sfs.satisStok_fiyatMiktar,
-            sfs.satisStok_kdv,
-            sfs.satisStok_kullanici_sayisi,
-            COALESCE(s.stok_ad, 'Bilinmeyen Stok') as stok_adi,
-            s.stok_kodu
-        FROM satisFaturasiStok sfs
-        LEFT JOIN stok s ON s.stok_id = sfs.satisStok_stokID
-        WHERE sfs.satisStok_satisFaturasiID = ?
-        ORDER BY sfs.satisStok_id ASC";
-    
-    $stmt = $mysqli->prepare($query);
-    if (!$stmt) {
-        throw new Exception("Prepare failed: " . $mysqli->error);
-    }
-    
-    $stmt->bind_param("i", $satis_id);
-    $stmt->execute();
-    
-    $result = $stmt->get_result();
+    // Yeni kayıt için (satis_id = 0) boş array döndür
     $data = [];
-    while ($row = $result->fetch_assoc()) {
-        $data[] = $row;
-    }
     
-    $stmt->close();
+    if ($satis_id > 0) {
+        // Simplified query with only existing columns
+        $query = "
+            SELECT 
+                sfs.satisStok_id,
+                sfs.satisStok_satisFaturasiID,
+                sfs.satisStok_stokID as stok_id,
+                sfs.satisStok_miktar,
+                sfs.satisStok_fiyatMiktar,
+                sfs.satisStok_kdv,
+                sfs.satisStok_abonelikBitisTarihi,
+                COALESCE(s.stok_ad, 'Bilinmeyen Stok') as stok_adi,
+                s.stok_kodu
+            FROM satisFaturasiStok sfs
+            LEFT JOIN stok s ON s.stok_id = sfs.satisStok_stokID
+            WHERE sfs.satisStok_satisFaturasiID = ?
+            ORDER BY sfs.satisStok_id ASC";
+        
+        $stmt = $mysqli->prepare($query);
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $mysqli->error);
+        }
+        
+        $stmt->bind_param("i", $satis_id);
+        $stmt->execute();
+        
+        $result = $stmt->get_result();
+        while ($row = $result->fetch_assoc()) {
+            $data[] = $row;
+        }
+        
+        $stmt->close();
+    }
     
     // Tahsilat detayları sorgusu - Kullanıcının istediği sorgu
     $tahsilat_query = "
@@ -328,12 +333,25 @@ try {
         }
     }
     
+    // Satis faturası bilgilerini al
+    $satis_info = null;
+    if ($satis_id > 0) {
+        $satis_query = "SELECT satis_faturaTarihi, satis_faturaNo, satis_aciklama, satis_dosya FROM satisFaturasi WHERE satis_id = ?";
+        $satis_stmt = $mysqli->prepare($satis_query);
+        $satis_stmt->bind_param("i", $satis_id);
+        $satis_stmt->execute();
+        $satis_result = $satis_stmt->get_result();
+        $satis_info = $satis_result->fetch_assoc();
+        $satis_stmt->close();
+    }
+    
     $mysqli->close();
     
     echo json_encode([
         'success' => true,
         'data' => $data,
-        'tahsilat_data' => $tahsilat_data
+        'tahsilat_data' => $tahsilat_data,
+        'satis_info' => $satis_info
     ]);
     
 } catch (Exception $e) {

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Alternatif web.config - Plesk/cPanel sunucular için -->
+<configuration>
+  <system.web>
+    <compilation tempDirectory="E:\Inetpub\vhosts\ilekasoft.com\tmp" />
+    <customErrors mode="Off"/>
+  </system.web>
+  <system.webServer>
+    <!-- Upload Limitleri -->
+    <security>
+      <requestFiltering>
+        <requestLimits maxAllowedContentLength="134217728" />
+      </requestFiltering>
+    </security>
+    
+    <!-- Default Documents -->
+    <defaultDocument>
+      <files>
+        <clear />
+        <add value="index.php" />
+        <add value="default.aspx" />
+        <add value="Default.htm" />
+        <add value="index.htm" />
+        <add value="index.html" />
+      </files>
+    </defaultDocument>
+    
+    <!-- URL Rewrite Rules -->
+    <rewrite>
+      <rules>
+        <!-- HTTPS yönlendirmesi -->
+        <rule name="Redirect to HTTPS" stopProcessing="true">
+          <match url=".*" />
+          <conditions>
+            <add input="{HTTPS}" pattern="off" ignoreCase="true" />
+            <add input="{HTTP_HOST}" pattern="localhost" negate="true" />
+          </conditions>
+          <action type="Redirect" url="https://{HTTP_HOST}/{R:0}" redirectType="Permanent" />
+        </rule>
+        
+        <!-- Mevcut dosyalar için istisna -->
+        <rule name="ExistingFiles" stopProcessing="true">
+          <match url=".*" />
+          <conditions>
+            <add input="{REQUEST_FILENAME}" matchType="IsFile" />
+          </conditions>
+          <action type="None" />
+        </rule>
+        
+        <!-- Mevcut klasörler için istisna -->
+        <rule name="ExistingDirectories" stopProcessing="true">
+          <match url=".*" />
+          <conditions>
+            <add input="{REQUEST_FILENAME}" matchType="IsDirectory" />
+          </conditions>
+          <action type="None" />
+        </rule>
+        
+        <!-- CodeIgniter URL Rewriting -->
+        <rule name="CodeIgniter" stopProcessing="true">
+          <match url="^(.*)$" />
+          <conditions>
+            <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
+            <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
+          </conditions>
+          <action type="Rewrite" url="index.php/{R:1}" />
+        </rule>
+      </rules>
+    </rewrite>
+    
+    <!-- Directory browsing kapalı -->
+    <directoryBrowse enabled="false" />
+    
+    <!-- HTTP Errors -->
+    <httpErrors>
+      <remove statusCode="404" />
+      <error statusCode="404" path="404.htm" />
+      <remove statusCode="500" />
+      <error statusCode="500" path="500.htm" />
+    </httpErrors>
+  </system.webServer>
+</configuration>

@@ -1,0 +1,18 @@
+{
+    "sourceFile": "test_routing.php",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1760098282558,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1760098282558,
+            "name": "Commit-0",
+            "content": "<?php\r\necho \"Test routing çalışıyor!<br>\";\r\necho \"REQUEST_URI: \" . $_SERVER['REQUEST_URI'] . \"<br>\";\r\necho \"SCRIPT_NAME: \" . $_SERVER['SCRIPT_NAME'] . \"<br>\";\r\necho \"QUERY_STRING: \" . $_SERVER['QUERY_STRING'] . \"<br>\";\r\necho \"HTTP_HOST: \" . $_SERVER['HTTP_HOST'] . \"<br>\";\r\n?>"
+        }
+    ]
+}
