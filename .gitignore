@@ -1,4 +1,5 @@
 # Hassas bilgiler içeren dosyalar
+.env
 application/config/database.php
 application/config/sms.php
 application/config/email.php
