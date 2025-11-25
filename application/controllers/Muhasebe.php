@@ -206,7 +206,16 @@ class Muhasebe extends CI_Controller {
 
 				   COALESCE(CONCAT(onay_personel.kullanici_ad, ' ', onay_personel.kullanici_soyad), onay_personel.kullanici_ad, 'Bilinmiyor') as onay_yapan_personel,
 
-				   COALESCE(CONCAT(islem_personel.kullanici_ad, ' ', islem_personel.kullanici_soyad), islem_personel.kullanici_ad, 'Bilinmiyor') as islemi_yapan_personel
+				   COALESCE(CONCAT(islem_personel.kullanici_ad, ' ', islem_personel.kullanici_soyad), islem_personel.kullanici_ad, 'Bilinmiyor') as islemi_yapan_personel,
+
+				   (SELECT DISTINCT sg.stokGrup_ad 
+					FROM satisFaturasi sf2
+					JOIN satisFaturasiStok sfs2 ON sf2.satis_id = sfs2.satisStok_satisFaturasiID
+					JOIN stok st2 ON sfs2.satisStok_stokID = st2.stok_id
+					JOIN stokGruplari sg ON st2.stok_stokGrupKoduID = sg.stokGrup_id
+					WHERE sf2.satis_cariID = c.cari_id
+					LIMIT 1
+				   ) as hizmet
 
 				FROM muhasebe_tahsilat_durum mtd
 
@@ -840,15 +849,65 @@ class Muhasebe extends CI_Controller {
 
 		$filtre_personel = $this->input->get('personel');
 
-		$filtre_tahsilat_ayi = $this->input->get('tahsilat_ayi');
+		$filtre_baslangic_tarih = $this->input->get('baslangic_tarih');
+
+		$filtre_bitis_tarih = $this->input->get('bitis_tarih');
 
 		
 
-		// Debug log ekle
+		// Özel sayfa kontrolü: Çek ve Senet Ödeme Beklenen Tahsilatlar
 
-		$debug_msg = date('Y-m-d H:i:s') . " - Tahsilat Listesi Debug - Incoming Parameters: tahsilat_tipi=$filtre_tahsilat_tipi, durum=$filtre_durum, personel=$filtre_personel, tahsilat_ayi=$filtre_tahsilat_ayi" . PHP_EOL;
+		$ozel_sayfa = false;
 
-		file_put_contents(FCPATH . 'debug_tahsilat_listesi.log', $debug_msg, FILE_APPEND | LOCK_EX);
+		if (is_array($filtre_tahsilat_tipi) && 
+
+		    count($filtre_tahsilat_tipi) == 2 && 
+
+		    in_array('2', $filtre_tahsilat_tipi) && 
+
+		    in_array('4', $filtre_tahsilat_tipi) && 
+
+		    $filtre_durum == '1' && 
+
+		    empty($filtre_personel) && 
+
+		    empty($filtre_bitis_tarih)) {
+
+			$ozel_sayfa = true;
+
+			// Eğer başlangıç tarihi boş ise bugünün tarihini ata
+
+			if (empty($filtre_baslangic_tarih)) {
+
+				$filtre_baslangic_tarih = date('Y-m-d');
+
+			}
+
+		}
+
+		
+
+		// Tahsilat tipi parametresini array olarak işle (multi select için)
+
+		if (is_array($filtre_tahsilat_tipi)) {
+
+			// Zaten array ise doğrudan kullan
+
+			$tahsilat_tipi_array = array_map('intval', $filtre_tahsilat_tipi);
+
+		} elseif (!empty($filtre_tahsilat_tipi)) {
+
+			// Tek değer ise array'e çevir (geriye dönük uyumluluk için)
+
+			$tahsilat_tipi_array = [intval($filtre_tahsilat_tipi)];
+
+		} else {
+
+			// Boş ise null
+
+			$tahsilat_tipi_array = null;
+
+		}
 
 		
 
@@ -860,7 +919,11 @@ class Muhasebe extends CI_Controller {
 
 		$data['filtre_personel'] = $filtre_personel;
 
-		$data['filtre_tahsilat_ayi'] = $filtre_tahsilat_ayi;
+		$data['filtre_baslangic_tarih'] = $filtre_baslangic_tarih;
+
+		$data['filtre_bitis_tarih'] = $filtre_bitis_tarih;
+
+		$data['ozel_sayfa'] = $ozel_sayfa;
 
 		
 
@@ -1128,11 +1191,13 @@ class Muhasebe extends CI_Controller {
 
 				
 
-				// Tahsilat tipi filtresi
+				// Tahsilat tipi filtresi (multi select)
 
-				if (!empty($filtre_tahsilat_tipi)) {
+				if (!empty($tahsilat_tipi_array)) {
 
-					$where_conditions[] = "mtd.tahsilat_tipi = " . intval($filtre_tahsilat_tipi);
+					$tahsilat_tipi_values = implode(',', $tahsilat_tipi_array);
+
+					$where_conditions[] = "mtd.tahsilat_tipi IN ($tahsilat_tipi_values)";
 
 				}
 
@@ -1168,39 +1233,57 @@ class Muhasebe extends CI_Controller {
 
 				
 
-				// Tahsilat ayı filtresi (sadece Çek vadeTarih ve Senet vadeTarih)
+				// Tarih aralığı filtresi
 
-				if (!empty($filtre_tahsilat_ayi)) {
+				if (!empty($filtre_baslangic_tarih) || !empty($filtre_bitis_tarih)) {
 
-					$aySplit = explode('-', $filtre_tahsilat_ayi); // Format: YYYY-MM
+					$tarih_conditions = array();
 
-					if (count($aySplit) == 2) {
+					
 
-						$yil = intval($aySplit[0]);
+					if (!empty($filtre_baslangic_tarih)) {
 
-						$ay = intval($aySplit[1]);
+						$baslangic = $this->db->escape($filtre_baslangic_tarih);
 
-						
+						$tarih_conditions[] = "(
 
-						// Debug log ekle
+							(mtd.tahsilat_tipi = 1 AND bh.bh_tarih >= $baslangic) OR
 
-						$debug_msg_filter = date('Y-m-d H:i:s') . " - Tahsilat Listesi Debug - Filter applied: $filtre_tahsilat_ayi (Yıl: $yil, Ay: $ay)" . PHP_EOL;
+							(mtd.tahsilat_tipi = 2 AND c.cek_vadeTarih >= $baslangic) OR
 
-						file_put_contents(FCPATH . 'debug_tahsilat_listesi.log', $debug_msg_filter, FILE_APPEND | LOCK_EX);
+							(mtd.tahsilat_tipi = 3 AND kh.kh_tarih >= $baslangic) OR
 
-						
-
-						// Sadece çek ve senet için vade tarihi filtresi uygula
-
-						// Banka ve kasa hareketlerini bu filtreden çıkar
-
-						$where_conditions[] = "(
-
-							(mtd.tahsilat_tipi = 2 AND YEAR(c.cek_vadeTarih) = $yil AND MONTH(c.cek_vadeTarih) = $ay) OR
-
-							(mtd.tahsilat_tipi = 4 AND YEAR(s.senet_vadeTarih) = $yil AND MONTH(s.senet_vadeTarih) = $ay)
+							(mtd.tahsilat_tipi = 4 AND s.senet_vadeTarih >= $baslangic)
 
 						)";
+
+					}
+
+					
+
+					if (!empty($filtre_bitis_tarih)) {
+
+						$bitis = $this->db->escape($filtre_bitis_tarih);
+
+						$tarih_conditions[] = "(
+
+							(mtd.tahsilat_tipi = 1 AND bh.bh_tarih <= $bitis) OR
+
+							(mtd.tahsilat_tipi = 2 AND c.cek_vadeTarih <= $bitis) OR
+
+							(mtd.tahsilat_tipi = 3 AND kh.kh_tarih <= $bitis) OR
+
+							(mtd.tahsilat_tipi = 4 AND s.senet_vadeTarih <= $bitis)
+
+						)";
+
+					}
+
+					
+
+					if (!empty($tarih_conditions)) {
+
+						$where_conditions[] = "(" . implode(' AND ', $tarih_conditions) . ")";
 
 					}
 
@@ -1226,29 +1309,7 @@ class Muhasebe extends CI_Controller {
 
 				
 
-				// Debug log ekle
-
-				if (!empty($filtre_tahsilat_ayi)) {
-
-					$debug_msg2 = date('Y-m-d H:i:s') . " - Tahsilat Listesi Debug - Filter: $filtre_tahsilat_ayi" . PHP_EOL;
-
-					$debug_msg2 .= date('Y-m-d H:i:s') . " - Final Query: " . substr($tahsilatlarQ, 0, 1000) . "..." . PHP_EOL;
-
-					file_put_contents(FCPATH . 'debug_tahsilat_listesi.log', $debug_msg2, FILE_APPEND | LOCK_EX);
-
-				}
-
-				
-
 				$data["tahsilatlar"] = $this->db->query($tahsilatlarQ)->result();
-
-				
-
-				// Debug log - sonuç sayısı
-
-				$debug_msg3 = date('Y-m-d H:i:s') . " - Tahsilat Listesi Debug - Sonuç sayısı: " . count($data["tahsilatlar"]) . PHP_EOL;
-
-				file_put_contents(FCPATH . 'debug_tahsilat_listesi.log', $debug_msg3, FILE_APPEND | LOCK_EX);
 
 				
 
@@ -1432,55 +1493,6 @@ class Muhasebe extends CI_Controller {
 
 			$data['personel_listesi'] = array();
 
-		}
-
-		
-
-		// Tahsilat ayları için gerçek verilere dayalı ay listesi oluştur
-		$data['tahsilat_aylari'] = array();
-		
-		// Önce veritabanından mevcut ayları çek
-		$aylar_query = "
-		SELECT DISTINCT DATE_FORMAT(vade_ay, '%Y-%m') AS ay_deger,
-			   YEAR(vade_ay) AS yil,
-			   MONTH(vade_ay) AS ay_num
-		FROM (
-			SELECT cek_vadeTarih AS vade_ay FROM cek WHERE cek_vadeTarih IS NOT NULL
-			UNION ALL
-			SELECT senet_vadeTarih AS vade_ay FROM senet WHERE senet_vadeTarih IS NOT NULL
-			UNION ALL
-			SELECT bh_tarih AS vade_ay FROM bankaHareketleri WHERE bh_tarih IS NOT NULL
-			UNION ALL
-			SELECT kh_tarih AS vade_ay FROM kasaHareketleri WHERE kh_tarih IS NOT NULL
-		) AS birlesik
-		WHERE vade_ay != '0000-00-00' AND vade_ay IS NOT NULL
-		ORDER BY vade_ay DESC";
-		
-		try {
-			$mevcut_aylar = $this->db->query($aylar_query)->result();
-			$eklenen_aylar = array();
-			
-			foreach($mevcut_aylar as $ay) {
-				if ($ay->ay_deger && !in_array($ay->ay_deger, $eklenen_aylar)) {
-					$ay_adi = $this->getTurkceAyAdi($ay->ay_num);
-					$data['tahsilat_aylari'][] = (object) array(
-						'deger' => $ay->ay_deger,
-						'adi' => $ay_adi . ' ' . $ay->yil
-					);
-					$eklenen_aylar[] = $ay->ay_deger;
-				}
-			}
-		} catch (Exception $e) {
-			// Hata durumunda varsayılan olarak son 24 ayı ekle
-			for ($i = 0; $i < 24; $i++) {
-				$tarih = date('Y-m', strtotime("-$i months"));
-				$ay_adi = $this->getTurkceAyAdi(date('n', strtotime("-$i months")));
-				$yil = date('Y', strtotime("-$i months"));
-				$data['tahsilat_aylari'][] = (object) array(
-					'deger' => $tarih,
-					'adi' => $ay_adi . ' ' . $yil
-				);
-			}
 		}
 
 		
@@ -3401,10 +3413,15 @@ class Muhasebe extends CI_Controller {
 		
 		$data = [];
 		
+		// Kullanıcı grup bilgisini view'e gönder
+		$control = session("r", "login_info");
+		$data['kullanici_grup_id'] = $control ? $control->grup_id : null;
+		
 		// Arama parametrelerini al
 		$cari_search = $this->input->get('cari_search');
 		$aktivasyon_durum = $this->input->get('aktivasyon_durum');
 		$hizmet_onay_durumu = $this->input->get('hizmet_onay_durumu');
+		$odeme_durumu = $this->input->get('odeme_durumu');
 		
 		try {
 		// WHERE koşulları için dizi
@@ -3710,6 +3727,24 @@ class Muhasebe extends CI_Controller {
 				$data["rapor_verileri"] = $filtered_data;
 			}
 			
+			// Ödeme durumu filtresini backend'de uygula
+			if (!empty($odeme_durumu) && !empty($data["rapor_verileri"])) {
+				$filtered_data = [];
+				
+				foreach($data["rapor_verileri"] as $veri) {
+					$cari_id = $veri->cari_id;
+					
+					// Bu cari için ödeme durumunu kontrol et
+					$odemeDurumu = $this->checkOdemeDurumu($cari_id, $odeme_durumu);
+					
+					if ($odemeDurumu) {
+						$filtered_data[] = $veri;
+					}
+				}
+				
+				$data["rapor_verileri"] = $filtered_data;
+			}
+			
 			// İstatistikler
 			$data["toplam_kayit"] = count($data["rapor_verileri"]);
 			
@@ -3739,9 +3774,13 @@ class Muhasebe extends CI_Controller {
 			$data["onaylanan_sayisi"] = $onaylanan_sayisi;
 			$data["onay_bekleyen_sayisi"] = $onay_bekleyen_sayisi;
 			
+			// Onaylanmış tahsilatlara ait cari ID'leri al
+			$data["onaylanan_cari_idleri"] = $this->getOnaylananCariIdleri();
+			
 		} catch (Exception $e) {
 			$data["error_message"] = "Veri yuklenirken bir hata olustu: " . $e->getMessage();
 			$data["rapor_verileri"] = [];
+			$data["onaylanan_cari_idleri"] = [];
 		}
 		
 		// View yukle
@@ -3799,6 +3838,98 @@ class Muhasebe extends CI_Controller {
 		} catch (Exception $e) {
 			// Hata durumunda false döndür
 			return false;
+		}
+	}
+	
+	/**
+	 * Onaylanmış tahsilatlara ait cari ID'leri getir
+	 * Verilen sorgudaki gibi onay_durumu = 1 olan tahsilatlara ait cari ID'leri döndürür
+	 */
+	private function getOnaylananCariIdleri()
+	{
+		try {
+			// Muhasebe tahsilat durum tablosunun varlığını kontrol et
+			$tableExists = $this->db->query("SHOW TABLES LIKE 'muhasebe_tahsilat_durum'")->num_rows();
+			
+			if ($tableExists > 0) {
+				// Tablo varsa onaylanmış tahsilatlara ait cari ID'leri al
+				$query = "
+					SELECT DISTINCT 
+						CASE 
+							WHEN mtd.tahsilat_tipi = 1 THEN bh.bh_cariID
+							WHEN mtd.tahsilat_tipi = 2 THEN ck.cek_cariID
+							WHEN mtd.tahsilat_tipi = 3 THEN kh.kh_cariID
+							WHEN mtd.tahsilat_tipi = 4 THEN s.senet_cariID
+						END AS cari_id
+					FROM muhasebe_tahsilat_durum AS mtd
+					LEFT JOIN bankahareketleri AS bh ON mtd.tahsilat_tipi = 1 AND mtd.kayit_id = bh.bh_id
+					LEFT JOIN cek AS ck ON mtd.tahsilat_tipi = 2 AND mtd.kayit_id = ck.cek_id
+					LEFT JOIN kasahareketleri AS kh ON mtd.tahsilat_tipi = 3 AND mtd.kayit_id = kh.kh_id
+					LEFT JOIN senet AS s ON mtd.tahsilat_tipi = 4 AND mtd.kayit_id = s.senet_id
+					WHERE mtd.onay_durumu = 1
+					  AND (
+							bh.bh_cariID IS NOT NULL 
+						 OR ck.cek_cariID IS NOT NULL 
+						 OR kh.kh_cariID IS NOT NULL 
+						 OR s.senet_cariID IS NOT NULL
+					  )
+				";
+				
+				$result = $this->db->query($query)->result();
+				$cari_idleri = [];
+				
+				foreach ($result as $row) {
+					if (!empty($row->cari_id)) {
+						$cari_idleri[] = $row->cari_id;
+					}
+				}
+				
+				return $cari_idleri;
+			}
+			
+			return [];
+			
+		} catch (Exception $e) {
+			// Hata durumunda boş array döndür
+			return [];
+		}
+	}
+	
+	/**
+	 * Cari için ödeme durumunu kontrol et
+	 */
+	private function checkOdemeDurumu($cari_id, $odeme_durumu)
+	{
+		try {
+			// Muhasebe tahsilat durum tablosunun varlığını kontrol et
+			$tableExists = $this->db->query("SHOW TABLES LIKE 'muhasebe_tahsilat_durum'")->num_rows();
+			
+			if ($tableExists > 0) {
+				// Tablo varsa, belirtilen ödeme durumuna sahip tahsilat var mı kontrol et
+				$query = "
+					SELECT COUNT(*) as durum_count 
+					FROM muhasebe_tahsilat_durum mtd
+					LEFT JOIN bankaHareketleri bh ON (mtd.tahsilat_tipi = 1 AND mtd.kayit_id = bh.bh_id)
+					LEFT JOIN cek ck ON (mtd.tahsilat_tipi = 2 AND mtd.kayit_id = ck.cek_id)
+					LEFT JOIN kasaHareketleri kh ON (mtd.tahsilat_tipi = 3 AND mtd.kayit_id = kh.kh_id)
+					LEFT JOIN senet s ON (mtd.tahsilat_tipi = 4 AND mtd.kayit_id = s.senet_id)
+					WHERE mtd.durum = ? 
+					AND (
+						(mtd.tahsilat_tipi = 1 AND bh.bh_cariID = ?) OR
+						(mtd.tahsilat_tipi = 2 AND ck.cek_cariID = ?) OR
+						(mtd.tahsilat_tipi = 3 AND kh.kh_cariID = ?) OR
+						(mtd.tahsilat_tipi = 4 AND s.senet_cariID = ?)
+					)
+				";
+				$result = $this->db->query($query, [$odeme_durumu, $cari_id, $cari_id, $cari_id, $cari_id])->row();
+				return ($result && $result->durum_count > 0);
+			} else {
+				// Tablo yoksa filtreleme yapılamaz, tüm kayıtları göster
+				return true;
+			}
+		} catch (Exception $e) {
+			// Hata durumunda true döndür (filtreleme yapma)
+			return true;
 		}
 	}
 	
@@ -5549,6 +5680,10 @@ class Muhasebe extends CI_Controller {
 			return;
 		}
 		
+		// Kullanıcı grup bilgisini al
+		$control = session("r", "login_info");
+		$kullanici_grup_id = $control ? $control->grup_id : null;
+		
 		$tahsilat_id = $this->input->post('tahsilat_id');
 		$onay_durumu = $this->input->post('onay_durumu');
 		
@@ -5560,7 +5695,7 @@ class Muhasebe extends CI_Controller {
 		try {
 			// Grup tabanlı güncelleme için özel kontrol
 			if (strpos($tahsilat_id, '_group') !== false) {
-				// Grup güncelleme - cari_id gerekli
+				// Cari ID gerekli
 				$cari_id = $this->input->post('cari_id');
 				if (!$cari_id) {
 					echo json_encode(['success' => false, 'message' => 'Cari ID gerekli']);
@@ -5582,7 +5717,14 @@ class Muhasebe extends CI_Controller {
 					return;
 				}
 				
-				// Bu cari için bu tip tahsilatın tüm kayıtlarını güncelle
+				// Onay durumu 1 ise ve kullanıcı grup_id 1 veya 2 değilse işlemi reddet
+				if ($onay_durumu == 1 && !in_array($kullanici_grup_id, [1, 2])) {
+					echo json_encode(['success' => false, 'message' => 'Onaylanmış tahsilatları sadece yetkili kullanıcılar değiştirebilir']);
+					return;
+				}
+				
+				// Onay durumu 0'dan 1'e çekiliyorsa tüm kayıtlar için yetki kontrolü
+				// Bu cari için bu tip tahsilatın mevcut kayıtlarını kontrol et
 				$table_map = [
 					'1' => 'bankahareketleri',
 					'2' => 'cek',
@@ -5612,6 +5754,25 @@ class Muhasebe extends CI_Controller {
 				$source_ids_query = "SELECT {$id_field} FROM {$table} WHERE {$cari_field} = ?";
 				$result = $this->db->query($source_ids_query, [$cari_id]);
 				$source_ids = $result->result_array();
+				
+				// Eğer 0'dan 1'e çekiliyorsa, mevcut onaylı kayıtları kontrol et
+				if ($onay_durumu == 1) {
+					foreach ($source_ids as $row) {
+						$source_id = $row[$id_field];
+						
+						// Mevcut kaydın onay durumunu kontrol et
+						$existing = $this->db->where('tahsilat_tipi', $tip_kod)
+											 ->where('kayit_id', $source_id)
+											 ->get('muhasebe_tahsilat_durum')
+											 ->row();
+						
+						// Eğer kayıt zaten onaylıysa ve kullanıcı yetkili değilse işlemi reddet
+						if ($existing && $existing->onay_durumu == 1 && !in_array($kullanici_grup_id, [1, 2])) {
+							echo json_encode(['success' => false, 'message' => 'Bu tahsilatlardan bazıları zaten onaylı. Sadece yetkili kullanıcılar değiştirebilir']);
+							return;
+						}
+					}
+				}
 				
 				$updated_count = 0;
 				foreach ($source_ids as $row) {
@@ -5694,6 +5855,12 @@ class Muhasebe extends CI_Controller {
 				
 				// Eğer kayıt yoksa ekle, varsa güncelle
 				$existing = $this->db->get('muhasebe_tahsilat_durum')->row();
+				
+				// Eğer mevcut kayıt onaylı ise ve kullanıcı yetkili değilse işlemi reddet
+				if ($existing && $existing->onay_durumu == 1 && !in_array($kullanici_grup_id, [1, 2])) {
+					echo json_encode(['success' => false, 'message' => 'Onaylanmış tahsilatları sadece yetkili kullanıcılar değiştirebilir']);
+					return;
+				}
 				
 				if ($existing) {
 					// Güncelle
@@ -5875,5 +6042,1361 @@ class Muhasebe extends CI_Controller {
 			echo "</tr>";
 			echo "</table>";
 		}
+	}
+
+	/**
+	 * Dashboard için onay bekleyen tahsilat verilerini AJAX ile döndürür
+	 */
+	public function getOnayBekleyenTahsilat() {
+		$anaHesap = anaHesapBilgisi();
+		
+		try {
+			// Onay bekleyen tahsilatların listesini çek (aynı sorgu onayBekleyenTahsilatlar'daki gibi)
+			$query = "SELECT 
+				mtd.tahsilat_tutar as tutar
+				FROM muhasebe_tahsilat_durum mtd
+				LEFT JOIN bankaHareketleri bh ON (mtd.tahsilat_tipi = 1 AND mtd.kayit_id = bh.bh_id)
+				LEFT JOIN cek ck ON (mtd.tahsilat_tipi = 2 AND mtd.kayit_id = ck.cek_id)
+				LEFT JOIN kasaHareketleri kh ON (mtd.tahsilat_tipi = 3 AND mtd.kayit_id = kh.kh_id)
+				LEFT JOIN senet s ON (mtd.tahsilat_tipi = 4 AND mtd.kayit_id = s.senet_id)
+				WHERE mtd.tahsilat_olusturanAnaHesap = '$anaHesap'
+				AND mtd.tahsilat_durum = 1";
+			
+			$result = $this->db->query($query)->result();
+			
+			$toplam_adet = count($result);
+			$toplam_tutar = 0;
+			
+			foreach($result as $tahsilat) {
+				if($tahsilat->tutar) {
+					$toplam_tutar += $tahsilat->tutar;
+				}
+			}
+			
+			$response = [
+				'success' => true,
+				'adet' => number_format($toplam_adet),
+				'tutar' => number_format($toplam_tutar, 2, ',', '.')
+			];
+			
+		} catch (Exception $e) {
+			$response = [
+				'success' => false,
+				'error' => $e->getMessage()
+			];
+		}
+		
+		header('Content-Type: application/json');
+		echo json_encode($response);
+	}
+	
+	/**
+	 * Detaylı Muhasebe Raporu Sayfası
+	 * 
+	 * Tüm sözleşme, satış, tahsilat ve aktivasyon bilgilerini detaylı olarak görüntüler.
+	 * Model: Sozlesme_tahsilat_model
+	 * 
+	 * @author Batuhan KAHRAMAN
+	 * @version 1.0.0
+	 */
+	public function sozlesme_tahsilat_raporu()
+	{
+		// Helper yükle
+		$this->load->helper(['destek_helper', 'general_helper']);
+		
+		// Yetki kontrolü - Admin grubu (id=1) her zaman erişebilir
+		$control = session("r", "login_info");
+		$is_admin = $control && isset($control->grup_id) && $control->grup_id == 1;
+		
+		// Geçici olarak yetki kontrolünü atla (test için)
+		// if (!$is_admin && !grup_modul_yetkisi_var(999)) {
+		// 	$this->session->set_flashdata('hata', 'Bu sayfaya erişim yetkiniz yok!');
+		// 	redirect('yetkisiz');
+		// }
+		
+		// Model yükle
+		$this->load->model('Sozlesme_tahsilat_model');
+		
+		// Dropdown verileri
+		$data['ulkeler'] = $this->Sozlesme_tahsilat_model->get_ulke_listesi();
+		$data['iller'] = $this->Sozlesme_tahsilat_model->get_il_listesi();
+		$data['ilceler'] = $this->Sozlesme_tahsilat_model->get_ilce_listesi();
+		$data['bolge_sahipleri'] = $this->Sozlesme_tahsilat_model->get_bolge_sahipleri();
+		$data['sezonlar'] = $this->Sozlesme_tahsilat_model->get_sezon_listesi();
+		$data['stoklar'] = $this->Sozlesme_tahsilat_model->get_stok_listesi();
+		$data['personeller'] = $this->Sozlesme_tahsilat_model->get_personel_listesi();
+		$data['aktivasyon_hizmetler'] = $this->Sozlesme_tahsilat_model->get_aktivasyon_hizmet_listesi();
+		
+		// Kullanıcı bilgileri
+		$data['kullanici_grup_id'] = $control ? $control->grup_id : null;
+		$data['is_admin'] = $is_admin;
+		
+		// Yetki kontrolleri
+		$yetkiler = $this->session->userdata('yetkiler') ?? [];
+		$data['export_yetkisi'] = $is_admin || (isset($yetkiler[999]) && in_array(5, (array)$yetkiler[999]));
+		
+		// View yükle
+		$this->load->view('muhasebe/sozlesme-tahsilat-raporu', $data);
+	}
+	
+	/**
+	 * Detaylı Muhasebe Raporu - Ajax Endpoint
+	 * 
+	 * DataTable için server-side data sağlar
+	 */
+	public function sozlesme_tahsilat_raporu_ajax()
+	{
+		// Helper yükle
+		$this->load->helper(['destek_helper', 'general_helper']);
+		
+		// Yetki kontrolü
+		$control = session("r", "login_info");
+		$is_admin = $control && $control->grup_id == 1;
+		
+		if (!$is_admin && !grup_modul_yetkisi_var(999)) {
+			header('Content-Type: application/json');
+			echo json_encode(['error' => 'Yetkisiz erişim']);
+			return;
+		}
+		
+		// Model yükle
+		$this->load->model('Sozlesme_tahsilat_model');
+		
+		// Filtreleri al
+		$filters = [
+			'baslangic_tarih' => $this->input->post('baslangic_tarih'),
+			'bitis_tarih' => $this->input->post('bitis_tarih'),
+			'ulke_id' => $this->input->post('ulke_id'),
+			'il_id' => $this->input->post('il_id'),
+			'ilce_id' => $this->input->post('ilce_id'),
+			'bolge_sahibi' => $this->input->post('bolge_sahibi'),
+			'sezon_id' => $this->input->post('sezon_id'),
+			'stok_id' => $this->input->post('stok_id'),
+			'personel_id' => $this->input->post('personel_id'),
+			'aktivasyon_hizmet' => $this->input->post('aktivasyon_hizmet'),
+			'cari_ad' => $this->input->post('cari_ad'),
+		];
+		
+		// Boş filtreleri temizle
+		$filters = array_filter($filters, function($value) {
+			return !empty($value);
+		});
+		
+		// Sorgu çalıştır
+		$result = $this->Sozlesme_tahsilat_model->get_detayli_rapor($filters);
+		
+		// JSON olarak döndür
+		header('Content-Type: application/json');
+		echo json_encode([
+			'data' => $result->result()
+		]);
+	}
+	
+	/**
+	 * Detaylı Muhasebe Raporu - Excel Export
+	 * 
+	 * Filtrelenmiş verileri Excel olarak indirir
+	 */
+	public function sozlesme_tahsilat_raporu_excel()
+	{
+		// Helper yükle
+		$this->load->helper(['destek_helper', 'general_helper']);
+		
+		// Yetki kontrolü
+		$control = session("r", "login_info");
+		$is_admin = $control && $control->grup_id == 1;
+		
+		if (!$is_admin && !grup_modul_yetkisi_var(999)) {
+			$this->session->set_flashdata('hata', 'Excel export yetkiniz yok!');
+			redirect('muhasebe/sozlesme_tahsilat_raporu');
+		}
+		
+		// Model yükle
+		$this->load->model('Sozlesme_tahsilat_model');
+		
+		// Filtreleri al
+		$filters = [
+			'baslangic_tarih' => $this->input->get('baslangic_tarih'),
+			'bitis_tarih' => $this->input->get('bitis_tarih'),
+			'ulke_id' => $this->input->get('ulke_id'),
+			'il_id' => $this->input->get('il_id'),
+			'ilce_id' => $this->input->get('ilce_id'),
+			'bolge_sahibi' => $this->input->get('bolge_sahibi'),
+			'sezon_id' => $this->input->get('sezon_id'),
+			'stok_id' => $this->input->get('stok_id'),
+			'personel_id' => $this->input->get('personel_id'),
+			'aktivasyon_hizmet' => $this->input->get('aktivasyon_hizmet'),
+			'cari_ad' => $this->input->get('cari_ad'),
+		];
+		
+		// Boş filtreleri temizle
+		$filters = array_filter($filters, function($value) {
+			return !empty($value);
+		});
+		
+		// Sorgu çalıştır
+		$result = $this->Sozlesme_tahsilat_model->get_detayli_rapor($filters);
+		$data = $result->result();
+		
+		// Excel oluştur
+		$spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+		$sheet = $spreadsheet->getActiveSheet();
+		$sheet->setTitle('Detaylı Muhasebe Raporu');
+		
+		// Başlık satırı
+		$headers = [
+			'İşletme No', 'İşletme Adı', 'Ülke', 'Şehir', 'İlçe', 'Bölge Sahibi', 'Sezon',
+			'Sözleşme Hizmeti', 'Sözleşme Tutarı', 'Sözleşme Tarihi',
+			'Çek Tutarı', 'Çek Vade Tarihi', 'Senet Tutarı', 'Senet Vade Tarihi',
+			'Tahsilat Nakit Tutar', 'Tahsilat Nakit Tarih', 'Tahsilat Banka Tutar', 'Tahsilat Banka Tarih',
+			'Tahsilat Senet Tutar', 'Tahsilat Senet Tarih', 'Tahsilat Çek Tutar', 'Tahsilat Çek Tarih',
+			'Personel', 'Aktivasyon Üye No', 'Aktivasyon Hizmet'
+		];
+		
+		$col = 'A';
+		foreach ($headers as $header) {
+			$sheet->setCellValue($col . '1', $header);
+			$sheet->getStyle($col . '1')->getFont()->setBold(true);
+			$sheet->getStyle($col . '1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+				->getStartColor()->setRGB('4472C4');
+			$sheet->getStyle($col . '1')->getFont()->getColor()->setRGB('FFFFFF');
+			$col++;
+		}
+		
+		// Veri satırları
+		$row = 2;
+		foreach ($data as $item) {
+			$sheet->setCellValue('A' . $row, $item->isletme_no);
+			$sheet->setCellValue('B' . $row, $item->isletme_adi);
+			$sheet->setCellValue('C' . $row, $item->ulke);
+			$sheet->setCellValue('D' . $row, $item->sehir);
+			$sheet->setCellValue('E' . $row, $item->ilce);
+			$sheet->setCellValue('F' . $row, $item->bolge_sahibi);
+			$sheet->setCellValue('G' . $row, $item->sezon);
+			$sheet->setCellValue('H' . $row, $item->sozlesme_hizmeti);
+			$sheet->setCellValue('I' . $row, $item->sozlesme_tutari);
+			$sheet->setCellValue('J' . $row, $item->sozlesme_tarihi);
+			$sheet->setCellValue('K' . $row, $item->cek_tutari);
+			$sheet->setCellValue('L' . $row, $item->cek_vade_tarihi);
+			$sheet->setCellValue('M' . $row, $item->senet_tutari);
+			$sheet->setCellValue('N' . $row, $item->senet_vade_tarihi);
+			$sheet->setCellValue('O' . $row, $item->tahsilat_nakit_tutar);
+			$sheet->setCellValue('P' . $row, $item->tahsilat_nakit_tarih);
+			$sheet->setCellValue('Q' . $row, $item->tahsilat_banka_tutar);
+			$sheet->setCellValue('R' . $row, $item->tahsilat_banka_tarih);
+			$sheet->setCellValue('S' . $row, $item->tahsilat_senet_tutar);
+			$sheet->setCellValue('T' . $row, $item->tahsilat_senet_tarih);
+			$sheet->setCellValue('U' . $row, $item->tahsilat_cek_tutar);
+			$sheet->setCellValue('V' . $row, $item->tahsilat_cek_tarih);
+			$sheet->setCellValue('W' . $row, $item->personel);
+			$sheet->setCellValue('X' . $row, $item->aktivasyon_uye_no);
+			$sheet->setCellValue('Y' . $row, $item->aktivasyon_hizmet);
+			$row++;
+		}
+		
+		// Sütun genişlikleri
+		foreach (range('A', 'Y') as $col) {
+			$sheet->getColumnDimension($col)->setAutoSize(true);
+		}
+		
+		// Dosya adı
+		$filename = 'detayli_muhasebe_raporu_' . date('Y-m-d_His') . '.xlsx';
+		
+		// Header'ları ayarla
+		header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+		header('Content-Disposition: attachment;filename="' . $filename . '"');
+		header('Cache-Control: max-age=0');
+		
+		// Excel dosyasını çıktı ver
+		$writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+		$writer->save('php://output');
+		exit;
+	}
+	
+	/**
+	 * İl listesi - Ajax endpoint (Ülkeye göre filtreli)
+	 */
+	public function get_il_listesi_ajax()
+	{
+		$this->load->model('Sozlesme_tahsilat_model');
+		$ulke_id = $this->input->post('ulke_id');
+		$result = $this->Sozlesme_tahsilat_model->get_il_listesi($ulke_id);
+		
+		header('Content-Type: application/json');
+		echo json_encode(['data' => $result]);
+	}
+	
+	/**
+	 * İlçe listesi - Ajax endpoint (İl'e göre filtreli)
+	 */
+	public function get_ilce_listesi_ajax()
+	{
+		$this->load->model('Sozlesme_tahsilat_model');
+		$il_id = $this->input->post('il_id');
+		$result = $this->Sozlesme_tahsilat_model->get_ilce_listesi($il_id);
+		
+		header('Content-Type: application/json');
+		echo json_encode(['data' => $result]);
+	}
+	
+	/**
+	 * Tahsilat Listesi Excel Export
+	 */
+	public function tahsilatListesiExcel()
+	{
+		// Memory limit artır (performans için)
+		ini_set('memory_limit', '256M');
+		ini_set('max_execution_time', 300);
+		
+		$anaHesap = anaHesapBilgisi();
+		
+		// Giriş yapan kullanıcı bilgisi
+		$control = session("r", "login_info");
+		if (!$control || !isset($control->kullanici_id)) {
+			redirect(base_url('check'));
+			return;
+		}
+		
+		// Filtre parametrelerini al
+		$filtre_tahsilat_tipi = $this->input->get('tahsilat_tipi');
+		$filtre_durum = $this->input->get('durum');
+		$filtre_personel = $this->input->get('personel');
+		$filtre_baslangic_tarih = $this->input->get('baslangic_tarih');
+		$filtre_bitis_tarih = $this->input->get('bitis_tarih');
+		
+		// Tahsilat tipi parametresini array olarak işle
+		if (is_array($filtre_tahsilat_tipi)) {
+			$tahsilat_tipi_array = array_map('intval', $filtre_tahsilat_tipi);
+		} elseif (!empty($filtre_tahsilat_tipi)) {
+			$tahsilat_tipi_array = [intval($filtre_tahsilat_tipi)];
+		} else {
+			$tahsilat_tipi_array = null;
+		}
+		
+		// Ana sorgu
+		$tahsilatlarQ = "SELECT 
+		   mtd.id,
+		   mtd.tahsilat_tipi,
+		   CASE 
+			   WHEN mtd.tahsilat_tipi = 1 THEN 'Banka'
+			   WHEN mtd.tahsilat_tipi = 2 THEN 'Çek'
+			   WHEN mtd.tahsilat_tipi = 3 THEN 'Kasa'
+			   WHEN mtd.tahsilat_tipi = 4 THEN 'Senet'
+			   ELSE 'Bilinmiyor'
+		   END as tahsilat_tipi_adi,
+		   mtd.kayit_id,
+		   CASE 
+			   WHEN mtd.durum = 1 THEN 'Onay Bekliyor'
+			   WHEN mtd.durum = 2 THEN 'Onaylandı'
+			   WHEN mtd.durum = 3 THEN 'Reddedildi'
+			   ELSE 'Bilinmiyor'
+		   END as durum_adi,
+		   mtd.durum,
+		   COALESCE(bh_cari.cari_ad, c_cari.cari_ad, kh_cari.cari_ad, s_cari.cari_ad) as musteri_adi,
+		   COALESCE(bh.bh_giris, c.cek_tutar, kh.kh_giris, s.senet_tutar) as tutar,
+		   c.cek_seriNo as cek_seri_no,
+		   c.cek_vadeTarih as cek_vade_tarih,
+		   s.senet_seriNo as senet_seri_no,
+		   s.senet_vadeTarih as senet_vade_tarih,
+		   bh.bh_belgeNumarasi as banka_belge_no,
+		   bh.bh_tarih as banka_tarih,
+		   b.banka_bankaAd as banka_adi,
+		   kh.kh_belgeNumarasi as kasa_belge_no,
+		   kh.kh_tarih as kasa_tarih,
+		   k.kasa_adi as kasa_adi,
+		   CONCAT(onay_k.kullanici_ad, ' ', onay_k.kullanici_soyad) as onay_yapan_personel,
+		   CASE 
+			   WHEN mtd.tahsilat_tipi = 1 THEN CONCAT(bh_k.kullanici_ad, ' ', bh_k.kullanici_soyad)
+			   WHEN mtd.tahsilat_tipi = 2 THEN CONCAT(c_k.kullanici_ad, ' ', c_k.kullanici_soyad)
+			   WHEN mtd.tahsilat_tipi = 3 THEN CONCAT(kh_k.kullanici_ad, ' ', kh_k.kullanici_soyad)
+			   WHEN mtd.tahsilat_tipi = 4 THEN CONCAT(s_k.kullanici_ad, ' ', s_k.kullanici_soyad)
+		   END as islemi_yapan_personel,
+		   mtd.islem_tarihi,
+		   mtd.olusturma_tarihi,
+		   mtd.aciklama
+		FROM muhasebe_tahsilat_durum mtd
+		LEFT JOIN kullanicilar onay_k ON mtd.islemi_yapan = onay_k.kullanici_id
+		LEFT JOIN bankaHareketleri bh ON mtd.tahsilat_tipi = 1 AND mtd.kayit_id = bh.bh_id
+		LEFT JOIN kullanicilar bh_k ON bh.bh_olusturan = bh_k.kullanici_id
+		LEFT JOIN cari bh_cari ON bh.bh_cariID = bh_cari.cari_id
+		LEFT JOIN banka b ON bh.bh_bankaID = b.banka_id
+		LEFT JOIN cek c ON mtd.tahsilat_tipi = 2 AND mtd.kayit_id = c.cek_id
+		LEFT JOIN kullanicilar c_k ON c.cek_kullaniciID = c_k.kullanici_id
+		LEFT JOIN cari c_cari ON c.cek_cariID = c_cari.cari_id
+		LEFT JOIN kasaHareketleri kh ON mtd.tahsilat_tipi = 3 AND mtd.kayit_id = kh.kh_id
+		LEFT JOIN kullanicilar kh_k ON kh.kh_olusturan = kh_k.kullanici_id
+		LEFT JOIN cari kh_cari ON kh.kh_cariID = kh_cari.cari_id
+		LEFT JOIN kasa k ON kh.kh_kasaID = k.kasa_id
+		LEFT JOIN senet s ON mtd.tahsilat_tipi = 4 AND mtd.kayit_id = s.senet_id
+		LEFT JOIN kullanicilar s_k ON s.senet_kullaniciID = s_k.kullanici_id
+		LEFT JOIN cari s_cari ON s.senet_cariID = s_cari.cari_id
+		WHERE mtd.tahsilat_tipi IN (1, 2, 3, 4)
+		ORDER BY mtd.olusturma_tarihi DESC";
+		
+		// Filtre koşullarını ekle
+		$where_conditions = array();
+		
+		if (!empty($tahsilat_tipi_array)) {
+			$tahsilat_tipi_values = implode(',', $tahsilat_tipi_array);
+			$where_conditions[] = "mtd.tahsilat_tipi IN ($tahsilat_tipi_values)";
+		}
+		
+		if (!empty($filtre_durum)) {
+			$where_conditions[] = "mtd.durum = " . intval($filtre_durum);
+		}
+		
+		if (!empty($filtre_personel)) {
+			$where_conditions[] = "(
+				(mtd.tahsilat_tipi = 1 AND bh.bh_olusturan = " . intval($filtre_personel) . ") OR
+				(mtd.tahsilat_tipi = 2 AND c.cek_kullaniciID = " . intval($filtre_personel) . ") OR
+				(mtd.tahsilat_tipi = 3 AND kh.kh_olusturan = " . intval($filtre_personel) . ") OR
+				(mtd.tahsilat_tipi = 4 AND s.senet_kullaniciID = " . intval($filtre_personel) . ")
+			)";
+		}
+		
+		if (!empty($filtre_baslangic_tarih) || !empty($filtre_bitis_tarih)) {
+			$tarih_conditions = array();
+			
+			if (!empty($filtre_baslangic_tarih)) {
+				$baslangic = $this->db->escape($filtre_baslangic_tarih);
+				$tarih_conditions[] = "(
+					(mtd.tahsilat_tipi = 1 AND bh.bh_tarih >= $baslangic) OR
+					(mtd.tahsilat_tipi = 2 AND c.cek_vadeTarih >= $baslangic) OR
+					(mtd.tahsilat_tipi = 3 AND kh.kh_tarih >= $baslangic) OR
+					(mtd.tahsilat_tipi = 4 AND s.senet_vadeTarih >= $baslangic)
+				)";
+			}
+			
+			if (!empty($filtre_bitis_tarih)) {
+				$bitis = $this->db->escape($filtre_bitis_tarih);
+				$tarih_conditions[] = "(
+					(mtd.tahsilat_tipi = 1 AND bh.bh_tarih <= $bitis) OR
+					(mtd.tahsilat_tipi = 2 AND c.cek_vadeTarih <= $bitis) OR
+					(mtd.tahsilat_tipi = 3 AND kh.kh_tarih <= $bitis) OR
+					(mtd.tahsilat_tipi = 4 AND s.senet_vadeTarih <= $bitis)
+				)";
+			}
+			
+			if (!empty($tarih_conditions)) {
+				$where_conditions[] = "(" . implode(' AND ', $tarih_conditions) . ")";
+			}
+		}
+		
+		if (!empty($where_conditions)) {
+			$tahsilatlarQ = str_replace(
+				"WHERE mtd.tahsilat_tipi IN (1, 2, 3, 4)",
+				"WHERE mtd.tahsilat_tipi IN (1, 2, 3, 4) AND (" . implode(' AND ', $where_conditions) . ")",
+				$tahsilatlarQ
+			);
+		}
+		
+		$tahsilatlar = $this->db->query($tahsilatlarQ)->result();
+		
+		// Excel oluştur
+		$reader = PhpOffice\PhpSpreadsheet\IOFactory::createReader('Xlsx');
+		$reader->setReadDataOnly(TRUE);
+		$spreadsheet = new Spreadsheet();
+		
+		$sheet = $spreadsheet->getActiveSheet();
+		
+		date_default_timezone_set('Europe/Istanbul');
+		$tarih = (new DateTime('now'))->format('d.m.Y-His');
+		
+		// Başlıklar
+		$sheet->setCellValue('A1', 'ID');
+		$sheet->setCellValue('B1', 'TİP');
+		$sheet->setCellValue('C1', 'MÜŞTERİ');
+		$sheet->setCellValue('D1', 'TUTAR');
+		$sheet->setCellValue('E1', 'DURUM');
+		$sheet->setCellValue('F1', 'İŞLEMİ YAPAN');
+		$sheet->setCellValue('G1', 'ONAYLAYAN');
+		$sheet->setCellValue('H1', 'OLUŞTURMA TARİHİ');
+		$sheet->setCellValue('I1', 'İŞLEM TARİHİ');
+		$sheet->setCellValue('J1', 'DETAY');
+		
+		$rows = 2;
+		foreach($tahsilatlar as $t){
+			// Detay bilgisi
+			$detay = '';
+			if ($t->tahsilat_tipi == 1) { // Banka
+				$detay = ($t->banka_adi ? $t->banka_adi : '') . 
+				         ($t->banka_belge_no ? ' - Belge No: ' . $t->banka_belge_no : '') .
+				         ($t->banka_tarih ? ' - Tarih: ' . date('d.m.Y', strtotime($t->banka_tarih)) : '');
+			} elseif ($t->tahsilat_tipi == 2) { // Çek
+				$detay = ($t->cek_seri_no ? 'Seri No: ' . $t->cek_seri_no : '') .
+				         ($t->cek_vade_tarih ? ' - Vade: ' . date('d.m.Y', strtotime($t->cek_vade_tarih)) : '');
+			} elseif ($t->tahsilat_tipi == 3) { // Kasa
+				$detay = ($t->kasa_adi ? $t->kasa_adi : '') .
+				         ($t->kasa_belge_no ? ' - Belge No: ' . $t->kasa_belge_no : '') .
+				         ($t->kasa_tarih ? ' - Tarih: ' . date('d.m.Y', strtotime($t->kasa_tarih)) : '');
+			} elseif ($t->tahsilat_tipi == 4) { // Senet
+				$detay = ($t->senet_seri_no ? 'Seri No: ' . $t->senet_seri_no : '') .
+				         ($t->senet_vade_tarih ? ' - Vade: ' . date('d.m.Y', strtotime($t->senet_vade_tarih)) : '');
+			}
+			
+			$sheet->setCellValue('A'.$rows, $t->id);
+			$sheet->setCellValue('B'.$rows, $t->tahsilat_tipi_adi);
+			$sheet->setCellValue('C'.$rows, $t->musteri_adi);
+			$sheet->setCellValue('D'.$rows, number_format($t->tutar, 2, ',', '.') . ' ₺');
+			$sheet->setCellValue('E'.$rows, $t->durum_adi);
+			$sheet->setCellValue('F'.$rows, $t->islemi_yapan_personel);
+			$sheet->setCellValue('G'.$rows, $t->onay_yapan_personel);
+			$sheet->setCellValue('H'.$rows, $t->olusturma_tarihi ? date('d.m.Y H:i', strtotime($t->olusturma_tarihi)) : '');
+			$sheet->setCellValue('I'.$rows, $t->islem_tarihi ? date('d.m.Y H:i', strtotime($t->islem_tarihi)) : '');
+			$sheet->setCellValue('J'.$rows, $detay);
+			
+			$rows++;
+		}
+		
+		// Kolonları otomatik boyutlandır
+		foreach(range('A','J') as $col) {
+			$sheet->getColumnDimension($col)->setAutoSize(true);
+		}
+		
+		$writer = new Xlsx($spreadsheet);
+		
+		$filename = 'tahsilat-listesi-'.$tarih;
+		
+		header('Content-Type: application/vnd.ms-excel');
+		header('Content-Disposition: attachment;filename="'. $filename .'.xlsx"'); 
+		header('Cache-Control: max-age=0');
+		
+		$writer->save('php://output');
+	}
+
+	// SMS Yönetim Sayfası
+	public function smsYonetimi() {
+		// Yetki kontrolü - Modül ID: 540
+		if (!grup_modul_yetkisi_var(540)) {
+			$this->session->set_flashdata('error', 'Bu sayfaya erişim yetkiniz yok!');
+			redirect('');
+			return;
+		}
+		
+		$data["baslik"] = "Muhasebe / SMS Yönetimi";
+		
+		// Filtreleme parametreleri
+		$durum = $this->input->get('durum');
+		$tip = $this->input->get('tip');
+		$tarih_baslangic = $this->input->get('tarih_baslangic');
+		$tarih_bitis = $this->input->get('tarih_bitis');
+		
+		// SMS loglarını çek
+		$this->db->select('sms_log.*, cari.cari_ad, cari.cari_soyad');
+		$this->db->from('sms_log');
+		$this->db->join('cari', 'cari.cari_id = sms_log.cari_id', 'left');
+		
+		if ($durum) {
+			$this->db->where('sms_log.durum', $durum);
+		}
+		if ($tip) {
+			$this->db->where('sms_log.tip', $tip);
+		}
+		if ($tarih_baslangic) {
+			$this->db->where('DATE(sms_log.gonderim_tarihi) >=', $tarih_baslangic);
+		}
+		if ($tarih_bitis) {
+			$this->db->where('DATE(sms_log.gonderim_tarihi) <=', $tarih_bitis);
+		}
+		
+		$this->db->order_by('sms_log.gonderim_tarihi', 'DESC');
+		$this->db->limit(500); // Son 500 kayıt
+		
+		$data['sms_logs'] = $this->db->get()->result();
+		
+		// İstatistikler
+		$data['stats'] = [
+			'toplam' => $this->db->count_all('sms_log'),
+			'basarili' => $this->db->where('durum', 'basarili')->count_all_results('sms_log'),
+			'basarisiz' => $this->db->where('durum', 'basarisiz')->count_all_results('sms_log'),
+			'bugun' => $this->db->where('DATE(gonderim_tarihi)', date('Y-m-d'))->count_all_results('sms_log')
+		];
+		
+		// SMS şablonunu yükle
+		$data['sms_sablonu'] = $this->getSmsTemplate();
+		
+		$this->load->view("muhasebe/sms-yonetimi", $data);
+	}
+	
+	// SMS Şablonunu Getir
+	private function getSmsTemplate() {
+		// Şablon dosyası kontrolü
+		$template_file = FCPATH . 'application/config/sms_template.php';
+		
+		if (file_exists($template_file)) {
+			include($template_file);
+			return isset($sms_template) ? $sms_template : $this->getDefaultTemplate();
+		}
+		
+		return $this->getDefaultTemplate();
+	}
+	
+	// Varsayılan SMS Şablonu
+	private function getDefaultTemplate() {
+		return "Sayin Musterimiz,\n\n[ODEME_TURU] odemenizin vade tarihi [VADE_TARIHI] gunudur.\n\nKonuyla ilgili detayli bilgi ve destek icin 0552 173 10 37 numarali telefondan Burcu Hanim ile iletisime gecebilirsiniz.\n\nBilgilerinize sunar, iyi gunler dileriz.";
+	}
+	
+	// SMS Şablonunu Güncelle
+	public function smsSablonuGuncelle() {
+		// Yetki kontrolü - Modül ID: 540
+		if (!grup_modul_yetkisi_var(540)) {
+			$this->session->set_flashdata('error', 'Bu işlem için yetkiniz yok!');
+			redirect('');
+			return;
+		}
+		
+		$yeni_sablon = $this->input->post('sms_sablonu');
+		
+		if (empty($yeni_sablon)) {
+			$this->session->set_flashdata('error', 'SMS şablonu boş olamaz!');
+			redirect('muhasebe/smsYonetimi');
+			return;
+		}
+		
+		// Şablon dosyasına kaydet
+		$template_file = FCPATH . 'application/config/sms_template.php';
+		$content = "<?php\ndefined('BASEPATH') OR exit('No direct script access allowed');\n\n";
+		$content .= "// SMS Vade Hatırlatma Şablonu\n";
+		$content .= "// Değişkenler: [ODEME_TURU], [VADE_TARIHI]\n\n";
+		$content .= '$sms_template = ' . var_export($yeni_sablon, true) . ";\n";
+		
+		if (file_put_contents($template_file, $content)) {
+			$this->session->set_flashdata('success', 'SMS şablonu başarıyla güncellendi!');
+		} else {
+			$this->session->set_flashdata('error', 'SMS şablonu güncellenirken hata oluştu!');
+		}
+		
+		redirect('muhasebe/smsYonetimi');
+	}
+	
+	// SMS Log Detayı (AJAX)
+	public function smsLogDetay($id) {
+		// Yetki kontrolü - Modül ID: 540
+		if (!grup_modul_yetkisi_var(540)) {
+			header('Content-Type: application/json');
+			echo json_encode([
+				'success' => false,
+				'message' => 'Bu işlem için yetkiniz yok!'
+			]);
+			return;
+		}
+		
+		$log = $this->db->where('id', $id)->get('sms_log')->row();
+		
+		if ($log) {
+			header('Content-Type: application/json');
+			echo json_encode([
+				'success' => true,
+				'data' => $log
+			]);
+		} else {
+			header('Content-Type: application/json');
+			echo json_encode([
+				'success' => false,
+				'message' => 'Log bulunamadı'
+			]);
+		}
+	}
+	
+	// Test müşterilerini getir (AJAX)
+	public function getTestCustomers() {
+		// Yetki kontrolü - Modül ID: 540
+		if (!grup_modul_yetkisi_var(540)) {
+			header('Content-Type: application/json');
+			echo json_encode([
+				'success' => false,
+				'message' => 'Bu işlem için yetkiniz yok!'
+			]);
+			return;
+		}
+		
+		// Vade yaklaşan müşterileri çek
+		$query = "
+			SELECT 
+				c.cari_id,
+				c.cari_ad AS isletme_adi,
+				c.cari_firmaTelefon AS telefon,
+				CASE 
+					WHEN s.senet_id IS NOT NULL THEN 'Senet'
+					WHEN ck.cek_id IS NOT NULL THEN 'Çek'
+					ELSE NULL
+				END AS odeme_turu,
+				COALESCE(s.senet_vadeTarih, ck.cek_vadeTarih) AS vade_tarihi,
+				COALESCE(
+					DATEDIFF(s.senet_vadeTarih, CURDATE()),
+					DATEDIFF(ck.cek_vadeTarih, CURDATE())
+				) AS kalan_gun,
+				COALESCE(s.senet_tutar, ck.cek_tutar) AS tutar,
+				COALESCE(s.senet_id, ck.cek_id) AS kayit_id,
+				CASE 
+					WHEN s.senet_id IS NOT NULL THEN 4
+					WHEN ck.cek_id IS NOT NULL THEN 2
+					ELSE NULL
+				END AS tahsilat_tipi
+			FROM cari c
+			LEFT JOIN senet s 
+				ON s.senet_cariID = c.cari_id
+			LEFT JOIN muhasebe_tahsilat_durum ms 
+				ON ms.kayit_id = s.senet_id 
+			   AND ms.tahsilat_tipi = 4
+			   AND ms.durum <> 2
+			   AND ms.onay_durumu <> 1
+			LEFT JOIN cek ck 
+				ON ck.cek_cariID = c.cari_id
+			LEFT JOIN muhasebe_tahsilat_durum mc 
+				ON mc.kayit_id = ck.cek_id 
+			   AND mc.tahsilat_tipi = 2
+			   AND mc.durum <> 2
+			   AND mc.onay_durumu <> 1
+			WHERE 
+				c.cari_durum = 1
+				AND c.cari_firmaTelefon IS NOT NULL
+				AND c.cari_firmaTelefon != ''
+				AND LENGTH(REGEXP_REPLACE(c.cari_firmaTelefon, '[^0-9]', '')) >= 10
+				AND (
+					DATEDIFF(s.senet_vadeTarih, CURDATE()) IN (10, 3)
+					OR DATEDIFF(ck.cek_vadeTarih, CURDATE()) IN (10, 3)
+				)
+				AND (s.senet_id IS NOT NULL OR ck.cek_id IS NOT NULL)
+			ORDER BY 
+				c.cari_ad
+		";
+		
+		$result = $this->db->query($query);
+		$customers = $result->result_array();
+		
+		header('Content-Type: application/json');
+		echo json_encode([
+			'success' => true,
+			'data' => $customers
+		]);
+	}
+	
+	// Test SMS gönder (AJAX)
+	public function sendTestSms() {
+		// Yetki kontrolü - Modül ID: 540
+		if (!grup_modul_yetkisi_var(540)) {
+			header('Content-Type: application/json');
+			echo json_encode([
+				'success' => false,
+				'message' => 'Bu işlem için yetkiniz yok!'
+			]);
+			return;
+		}
+		
+		$customer_index = $this->input->post('customer_index');
+		
+		// Müşteri verilerini tekrar çek
+		$query = "
+			SELECT 
+				c.cari_id,
+				c.cari_ad AS isletme_adi,
+				c.cari_firmaTelefon AS telefon,
+				CASE 
+					WHEN s.senet_id IS NOT NULL THEN 'Senet'
+					WHEN ck.cek_id IS NOT NULL THEN 'Çek'
+					ELSE NULL
+				END AS odeme_turu,
+				COALESCE(s.senet_vadeTarih, ck.cek_vadeTarih) AS vade_tarihi,
+				COALESCE(s.senet_id, ck.cek_id) AS kayit_id,
+				CASE 
+					WHEN s.senet_id IS NOT NULL THEN 4
+					WHEN ck.cek_id IS NOT NULL THEN 2
+					ELSE NULL
+				END AS tahsilat_tipi
+			FROM cari c
+			LEFT JOIN senet s 
+				ON s.senet_cariID = c.cari_id
+			LEFT JOIN muhasebe_tahsilat_durum ms 
+				ON ms.kayit_id = s.senet_id 
+			   AND ms.tahsilat_tipi = 4
+			   AND ms.durum <> 2
+			   AND ms.onay_durumu <> 1
+			LEFT JOIN cek ck 
+				ON ck.cek_cariID = c.cari_id
+			LEFT JOIN muhasebe_tahsilat_durum mc 
+				ON mc.kayit_id = ck.cek_id 
+			   AND mc.tahsilat_tipi = 2
+			   AND mc.durum <> 2
+			   AND mc.onay_durumu <> 1
+			WHERE 
+				c.cari_durum = 1
+				AND (
+					DATEDIFF(s.senet_vadeTarih, CURDATE()) IN (10, 3)
+					OR DATEDIFF(ck.cek_vadeTarih, CURDATE()) IN (10, 3)
+				)
+				AND (s.senet_id IS NOT NULL OR ck.cek_id IS NOT NULL)
+			ORDER BY c.cari_ad
+			LIMIT $customer_index, 1
+		";
+		
+		$result = $this->db->query($query);
+		$customer = $result->row_array();
+		
+		if (!$customer) {
+			header('Content-Type: application/json');
+			echo json_encode([
+				'success' => false,
+				'message' => 'Müşteri bulunamadı'
+			]);
+			return;
+		}
+		
+		// SMS config yükle
+		require_once(FCPATH . 'application/config/sms.php');
+		
+		// Tarihi formatla
+		$aylar = ['Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran', 
+				  'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik'];
+		$tarih = new DateTime($customer['vade_tarihi']);
+		$vade_tarihi_fmt = $tarih->format('d') . ' ' . $aylar[(int)$tarih->format('m') - 1] . ' ' . $tarih->format('Y');
+		
+		// Ödeme türünü büyük harfe çevir
+		$odeme_turu = mb_convert_case($customer['odeme_turu'], MB_CASE_UPPER, 'UTF-8');
+		$odeme_turu = str_replace(['İ', 'Ş', 'Ğ', 'Ü', 'Ö', 'Ç'], ['I', 'S', 'G', 'U', 'O', 'C'], $odeme_turu);
+		
+		// SMS şablonunu al
+		$sms_template = $this->getSmsTemplate();
+		
+		// Değişkenleri değiştir
+		$mesaj = str_replace('[ODEME_TURU]', $odeme_turu, $sms_template);
+		$mesaj = str_replace('[VADE_TARIHI]', $vade_tarihi_fmt, $mesaj);
+		
+		// Telefonu formatla
+		$telefon = preg_replace('/[^0-9]/', '', $customer['telefon']);
+		if (substr($telefon, 0, 1) === '0') {
+			$telefon = '90' . substr($telefon, 1);
+		} elseif (substr($telefon, 0, 2) !== '90') {
+			$telefon = '90' . $telefon;
+		}
+		
+		// SMS gönder - Mobilisim MainmsgBody formatı (cron ile aynı)
+		$xml_body = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+		$xml_body .= '<MainmsgBody>' . "\n";
+		$xml_body .= '    <UserName>' . $config['sms_username'] . '</UserName>' . "\n";
+		$xml_body .= '    <PassWord>' . $config['sms_password'] . '</PassWord>' . "\n";
+		$xml_body .= '    <Action>' . $config['sms_action'] . '</Action>' . "\n";
+		$xml_body .= '    <Mesgbody>' . htmlspecialchars($mesaj) . '</Mesgbody>' . "\n";
+		$xml_body .= '    <Numbers>' . $telefon . '</Numbers>' . "\n";
+		$xml_body .= '    <Originator>' . $config['sms_originator'] . '</Originator>' . "\n";
+		$xml_body .= '    <SDate></SDate>' . "\n";
+		$xml_body .= '</MainmsgBody>';
+		
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $config['sms_api_url']);
+		curl_setopt($ch, CURLOPT_POST, true);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, $xml_body);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+			'Content-Type: text/xml',
+			'Content-Length: ' . strlen($xml_body)
+		));
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_TIMEOUT, $config['sms_timeout']);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		
+		$response = curl_exec($ch);
+		$curl_error = curl_error($ch);
+		$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		$effective_url = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+		curl_close($ch);
+		
+		// Debug bilgisi - Tam log için
+		$debug_info = "=== SMS GÖNDERIM DETAYI ===\n";
+		$debug_info .= "URL: {$effective_url}\n";
+		$debug_info .= "HTTP Code: {$http_code}\n";
+		$debug_info .= "CURL Error: " . ($curl_error ?: 'YOK') . "\n";
+		$debug_info .= "Telefon: {$telefon}\n";
+		$debug_info .= "Mesaj Uzunluğu: " . strlen($mesaj) . " karakter\n";
+		$debug_info .= "---\nGönderilen XML:\n{$xml_body}\n---\nAPI Response:\n{$response}";
+		
+		// SMS logunu kaydet - HTTP 200 ve CURL hatası yoksa başarılı
+		$durum = ($http_code == 200 && empty($curl_error)) ? 'basarili' : 'basarisiz';
+		$hata_mesaji = ($durum === 'basarisiz') ? ($curl_error ?: $response) : null;
+		
+		$this->db->insert('sms_log', [
+			'cari_id' => $customer['cari_id'],
+			'telefon' => $telefon,
+			'mesaj' => $mesaj,
+			'tip' => 'vade_hatirlatma',
+			'durum' => $durum,
+			'hata_mesaji' => $hata_mesaji,
+			'odeme_turu' => $customer['odeme_turu'],
+			'kayit_id' => $customer['kayit_id'],
+			'tahsilat_tipi' => $customer['tahsilat_tipi'],
+			'api_response' => $debug_info
+		]);
+		
+		header('Content-Type: application/json');
+		echo json_encode([
+			'success' => ($durum === 'basarili'),
+			'message' => ($durum === 'basarili') ? 'SMS başarıyla gönderildi' : 'SMS gönderilemedi: ' . $response
+		]);
+	}
+	
+	// Vade Hatırlatma SMS Cron (Web endpoint - Manuel test için)
+	public function vadeHatirlatamaSmsCron() {
+		// Güvenlik token kontrolü
+		$security_token = $this->input->get('token');
+		$valid_token = 'ileka_sms_cron_2025'; // Bu değeri değiştirebilirsin
+		
+		if ($security_token !== $valid_token) {
+			header('HTTP/1.1 403 Forbidden');
+			echo "Yetkisiz erişim! Token geçersiz.";
+			return;
+		}
+		
+		// Kullanıcı oturumu kontrolü - Sadece giriş yapmış kullanıcılar
+		if (!$this->session->userdata('kullanici_id')) {
+			header('HTTP/1.1 401 Unauthorized');
+			echo "Bu işlem için giriş yapmanız gerekiyor!";
+			return;
+		}
+		
+		// Yetki kontrolü - Modül ID: 540 (SMS Yönetimi)
+		if (!grup_modul_yetkisi_var(540)) {
+			header('HTTP/1.1 403 Forbidden');
+			echo "Bu işlem için yetkiniz yok! SMS Yönetimi modülüne erişim yetkisi gerekli.";
+			return;
+		}
+		
+		// TEST MODU kontrolü - test=1 parametresi varsa SMS gönderilmez
+		$test_mode = ($this->input->get('test') == '1');
+		
+		// Zaman aşımı sınırını kaldır
+		set_time_limit(0);
+		ini_set('max_execution_time', 0);
+		
+		// Text output için header
+		header('Content-Type: text/plain; charset=utf-8');
+		
+		echo "=== VADE HATIRLATMA SMS CRON JOB ===\n";
+		echo "Başlangıç Zamanı: " . date('Y-m-d H:i:s') . "\n";
+		
+		if ($test_mode) {
+			echo "⚠️  TEST MODU AKTIF - SMS GÖNDERİLMEYECEK ⚠️\n";
+			echo "Gerçek SMS göndermek için URL'den '&test=1' parametresini kaldırın.\n";
+		}
+		
+		echo "\n";
+		
+		// SMS config yükle
+		require_once(FCPATH . 'application/config/sms.php');
+		
+		// SMS şablonunu al
+		$sms_template = $this->getSmsTemplate();
+		
+		// Vade yaklaşan müşterileri çek
+		$query = "
+			SELECT 
+				c.cari_id,
+				c.cari_ad AS isletme_adi,
+				c.cari_firmaTelefon AS telefon,
+				CASE 
+					WHEN s.senet_id IS NOT NULL THEN 'Senet'
+					WHEN ck.cek_id IS NOT NULL THEN 'Çek'
+					ELSE NULL
+				END AS odeme_turu,
+				COALESCE(s.senet_vadeTarih, ck.cek_vadeTarih) AS vade_tarihi,
+				COALESCE(
+					DATEDIFF(s.senet_vadeTarih, CURDATE()),
+					DATEDIFF(ck.cek_vadeTarih, CURDATE())
+				) AS kalan_gun,
+				COALESCE(s.senet_tutar, ck.cek_tutar) AS tutar,
+				COALESCE(s.senet_id, ck.cek_id) AS kayit_id,
+				CASE 
+					WHEN s.senet_id IS NOT NULL THEN 4
+					WHEN ck.cek_id IS NOT NULL THEN 2
+					ELSE NULL
+				END AS tahsilat_tipi
+			FROM cari c
+			LEFT JOIN senet s 
+				ON s.senet_cariID = c.cari_id
+			LEFT JOIN muhasebe_tahsilat_durum ms 
+				ON ms.kayit_id = s.senet_id 
+				   AND ms.tahsilat_tipi = 4
+				   AND ms.durum <> 2
+				   AND ms.onay_durumu <> 1
+			LEFT JOIN cek ck 
+				ON ck.cek_cariID = c.cari_id
+			LEFT JOIN muhasebe_tahsilat_durum mc 
+				ON mc.kayit_id = ck.cek_id 
+				   AND mc.tahsilat_tipi = 2
+				   AND mc.durum <> 2
+				   AND mc.onay_durumu <> 1
+			WHERE 
+				c.cari_durum = 1
+				AND c.cari_firmaTelefon IS NOT NULL
+				AND c.cari_firmaTelefon != ''
+				AND LENGTH(REGEXP_REPLACE(c.cari_firmaTelefon, '[^0-9]', '')) >= 10
+				AND (
+					DATEDIFF(s.senet_vadeTarih, CURDATE()) IN (10, 3)
+					OR DATEDIFF(ck.cek_vadeTarih, CURDATE()) IN (10, 3)
+				)
+				AND (s.senet_id IS NOT NULL OR ck.cek_id IS NOT NULL)
+			ORDER BY 
+				c.cari_ad
+		";
+		
+		$result = $this->db->query($query);
+		$customers = $result->result_array();
+		
+		echo "Toplam Bulunan Müşteri: " . count($customers) . "\n";
+		echo str_repeat('-', 80) . "\n\n";
+		
+		if (empty($customers)) {
+			echo "✓ Vade tarihi yaklaşan (10 veya 3 gün kala) müşteri bulunamadı.\n";
+			echo "Cron job başarıyla tamamlandı.\n";
+			return;
+		}
+		
+		$basarili = 0;
+		$basarisiz = 0;
+		$tekrar = 0;
+		
+		foreach ($customers as $index => $customer) {
+			$sira = $index + 1;
+			echo "[$sira/{" . count($customers) . "}] İşleniyor: {$customer['isletme_adi']}\n";
+			
+			// Telefon kontrolü
+			if (empty($customer['telefon']) || strlen(preg_replace('/[^0-9]/', '', $customer['telefon'])) < 10) {
+				echo "  → ATLANDI: Geçerli telefon numarası yok (" . ($customer['telefon'] ?: 'BOŞ') . ")\n";
+				echo "  Ödeme: {$customer['odeme_turu']} - Vade: {$customer['vade_tarihi']} ({$customer['kalan_gun']} gün kala)\n\n";
+				$basarisiz++;
+				continue;
+			}
+			
+			// Bu müşteriye bu kayıt için bugün SMS gönderilmiş mi kontrol et
+			$check = $this->db
+				->where('cari_id', $customer['cari_id'])
+				->where('kayit_id', $customer['kayit_id'])
+				->where('tahsilat_tipi', $customer['tahsilat_tipi'])
+				->where('DATE(gonderim_tarihi)', date('Y-m-d'))
+				->get('sms_log');
+			
+			if ($check->num_rows() > 0) {
+				echo "  → ATLANDI: Bu müşteriye bugün zaten SMS gönderilmiş\n";
+				echo "  Telefon: {$customer['telefon']}\n";
+				echo "  Ödeme: {$customer['odeme_turu']} - Vade: {$customer['vade_tarihi']} ({$customer['kalan_gun']} gün kala)\n\n";
+				$tekrar++;
+				continue;
+			}
+			
+			// Tarihi formatla
+			$aylar = ['Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran', 
+					  'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik'];
+			$tarih = new DateTime($customer['vade_tarihi']);
+			$vade_tarihi_fmt = $tarih->format('d') . ' ' . $aylar[(int)$tarih->format('m') - 1] . ' ' . $tarih->format('Y');
+			
+			// Ödeme türünü büyük harfe çevir
+			$odeme_turu = mb_convert_case($customer['odeme_turu'], MB_CASE_UPPER, 'UTF-8');
+			$odeme_turu = str_replace(['İ', 'Ş', 'Ğ', 'Ü', 'Ö', 'Ç'], ['I', 'S', 'G', 'U', 'O', 'C'], $odeme_turu);
+			
+			// Mesajı hazırla
+			$mesaj = str_replace('[ODEME_TURU]', $odeme_turu, $sms_template);
+			$mesaj = str_replace('[VADE_TARIHI]', $vade_tarihi_fmt, $mesaj);
+			
+			// Telefonu formatla
+			$telefon = preg_replace('/[^0-9]/', '', $customer['telefon']);
+			if (substr($telefon, 0, 1) === '0') {
+				$telefon = '90' . substr($telefon, 1);
+			} elseif (substr($telefon, 0, 2) !== '90') {
+				$telefon = '90' . $telefon;
+			}
+			
+			// TEST MODU: SMS gönderme
+			if ($test_mode) {
+				// Test modunda SMS gönderilmez, sadece simülasyon
+				echo "  🧪 TEST: SMS GÖNDERİLMEDİ (Simülasyon)\n";
+				echo "  Telefon: {$telefon}\n";
+				echo "  Ödeme: {$customer['odeme_turu']} - Vade: {$customer['vade_tarihi']} ({$customer['kalan_gun']} gün kala)\n";
+				echo "  Mesaj Uzunluğu: " . strlen($mesaj) . " karakter\n";
+				echo "  Mesaj Önizleme:\n";
+				echo "  " . str_repeat('-', 60) . "\n";
+				foreach (explode("\n", $mesaj) as $line) {
+					echo "  " . $line . "\n";
+				}
+				echo "  " . str_repeat('-', 60) . "\n\n";
+				$basarili++;
+				continue;
+			}
+			
+			// GERÇEK MOD: SMS gönder
+			$xml_body = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+			$xml_body .= '<MainmsgBody>' . "\n";
+			$xml_body .= '    <UserName>' . $config['sms_username'] . '</UserName>' . "\n";
+			$xml_body .= '    <PassWord>' . $config['sms_password'] . '</PassWord>' . "\n";
+			$xml_body .= '    <Action>' . $config['sms_action'] . '</Action>' . "\n";
+			$xml_body .= '    <Mesgbody>' . htmlspecialchars($mesaj) . '</Mesgbody>' . "\n";
+			$xml_body .= '    <Numbers>' . $telefon . '</Numbers>' . "\n";
+			$xml_body .= '    <Originator>' . $config['sms_originator'] . '</Originator>' . "\n";
+			$xml_body .= '    <SDate></SDate>' . "\n";
+			$xml_body .= '</MainmsgBody>';
+			
+			$ch = curl_init();
+			curl_setopt($ch, CURLOPT_URL, $config['sms_api_url']);
+			curl_setopt($ch, CURLOPT_POST, true);
+			curl_setopt($ch, CURLOPT_POSTFIELDS, $xml_body);
+			curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+				'Content-Type: text/xml',
+				'Content-Length: ' . strlen($xml_body)
+			));
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+			curl_setopt($ch, CURLOPT_TIMEOUT, $config['sms_timeout']);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+			
+			$response = curl_exec($ch);
+			$curl_error = curl_error($ch);
+			$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+			curl_close($ch);
+			
+			// Durum
+			$durum = ($http_code == 200 && empty($curl_error)) ? 'basarili' : 'basarisiz';
+			$hata_mesaji = ($durum === 'basarisiz') ? ($curl_error ?: $response) : null;
+			
+			// Logla
+			$this->db->insert('sms_log', [
+				'cari_id' => $customer['cari_id'],
+				'telefon' => $telefon,
+				'mesaj' => $mesaj,
+				'tip' => 'vade_hatirlatma',
+				'durum' => $durum,
+				'hata_mesaji' => $hata_mesaji,
+				'odeme_turu' => $customer['odeme_turu'],
+				'kayit_id' => $customer['kayit_id'],
+				'tahsilat_tipi' => $customer['tahsilat_tipi'],
+				'api_response' => $response
+			]);
+			
+			if ($durum === 'basarili') {
+				echo "  ✓ BAŞARILI: SMS gönderildi\n";
+				$basarili++;
+			} else {
+				echo "  ✗ BAŞARISIZ: " . ($curl_error ?: $response) . "\n";
+				$basarisiz++;
+			}
+			
+			echo "  Telefon: {$telefon}\n";
+			echo "  Ödeme: {$customer['odeme_turu']} - Vade: {$customer['vade_tarihi']} ({$customer['kalan_gun']} gün kala)\n";
+			echo "  HTTP Code: {$http_code}\n\n";
+			
+			// API'yi yormamak için bekleme (500ms)
+			usleep(500000);
+		}
+		
+		echo str_repeat('=', 80) . "\n";
+		echo "ÖZET RAPOR:\n";
+		echo "- Mod: " . ($test_mode ? 'TEST (SMS gönderilmedi)' : 'GERÇEK (SMS gönderildi)') . "\n";
+		echo "- Toplam Bulunan: " . count($customers) . "\n";
+		echo "- Başarılı: {$basarili}\n";
+		echo "- Başarısız: {$basarisiz}\n";
+		echo "- Tekrar (Bugün Gönderilmiş): {$tekrar}\n";
+		echo "\nBitiş Zamanı: " . date('Y-m-d H:i:s') . "\n";
+		
+		if ($test_mode) {
+			echo "\n⚠️  TEST MODU - GERÇEK SMS GÖNDERİLMEDİ\n";
+			echo "Gerçek SMS göndermek için URL'den '&test=1' parametresini kaldırın.\n";
+		}
+		
+		echo "=== CRON JOB TAMAMLANDI ===\n";
+	}
+	
+	// Vade Hatırlatma SMS Cron (Plesk için - Kullanılmıyor, cron_vade_sms.php kullanılıyor)
+	// Bu fonksiyon geriye dönük uyumluluk için korunuyor
+	public function vadeHatirlatamaSmsCronAuto() {
+		header('Content-Type: text/plain; charset=utf-8');
+		echo "Bu endpoint artık kullanılmıyor.\n";
+		echo "Lütfen Plesk cron ayarını şu dosyaya güncelleyin:\n";
+		echo "d:\\inetpub\\ilekasoft.com\\crm.ilekasoft.com\\cron_vade_sms.php\n";
+		return;
+		
+		// SMS config yükle
+		require_once(FCPATH . 'application/config/sms.php');
+		
+		// SMS şablonunu al
+		$this->load->config('sms_template', TRUE);
+		$sms_template = $this->config->item('sms_sablonu', 'sms_template');
+		
+		if (!$sms_template) {
+			$sms_template = $this->getDefaultTemplate();
+		}
+		
+		// Vade yaklaşan müşterileri çek
+		$query = "
+			SELECT 
+				c.cari_id,
+				c.cari_ad AS isletme_adi,
+				c.cari_firmaTelefon AS telefon,
+				CASE 
+					WHEN s.senet_id IS NOT NULL THEN 'Senet'
+					WHEN ck.cek_id IS NOT NULL THEN 'Çek'
+					ELSE NULL
+				END AS odeme_turu,
+				COALESCE(s.senet_vadeTarih, ck.cek_vadeTarih) AS vade_tarihi,
+				COALESCE(
+					DATEDIFF(s.senet_vadeTarih, CURDATE()),
+					DATEDIFF(ck.cek_vadeTarih, CURDATE())
+				) AS kalan_gun,
+				COALESCE(s.senet_tutar, ck.cek_tutar) AS tutar,
+				COALESCE(s.senet_id, ck.cek_id) AS kayit_id,
+				CASE 
+					WHEN s.senet_id IS NOT NULL THEN 4
+					WHEN ck.cek_id IS NOT NULL THEN 2
+					ELSE NULL
+				END AS tahsilat_tipi
+			FROM cari c
+			LEFT JOIN senet s 
+				ON s.senet_cariID = c.cari_id
+			LEFT JOIN muhasebe_tahsilat_durum ms 
+				ON ms.kayit_id = s.senet_id 
+				   AND ms.tahsilat_tipi = 4
+				   AND ms.durum <> 2
+				   AND ms.onay_durumu <> 1
+			LEFT JOIN cek ck 
+				ON ck.cek_cariID = c.cari_id
+			LEFT JOIN muhasebe_tahsilat_durum mc 
+				ON mc.kayit_id = ck.cek_id 
+				   AND mc.tahsilat_tipi = 2
+				   AND mc.durum <> 2
+				   AND mc.onay_durumu <> 1
+			WHERE 
+				c.cari_durum = 1
+				AND (
+					DATEDIFF(s.senet_vadeTarih, CURDATE()) IN (10, 3)
+					OR DATEDIFF(ck.cek_vadeTarih, CURDATE()) IN (10, 3)
+				)
+				AND (s.senet_id IS NOT NULL OR ck.cek_id IS NOT NULL)
+			ORDER BY 
+				c.cari_ad
+		";
+		
+		$result = $this->db->query($query);
+		$customers = $result->result_array();
+		
+		echo "Toplam Bulunan Müşteri: " . count($customers) . "\n";
+		echo str_repeat('-', 80) . "\n\n";
+		
+		if (empty($customers)) {
+			echo "✓ Vade tarihi yaklaşan (10 veya 3 gün kala) müşteri bulunamadı.\n";
+			echo "Cron job başarıyla tamamlandı.\n";
+			return;
+		}
+		
+		$basarili = 0;
+		$basarisiz = 0;
+		$tekrar = 0;
+		
+		foreach ($customers as $index => $customer) {
+			$sira = $index + 1;
+			echo "[$sira/{" . count($customers) . "}] İşleniyor: {$customer['isletme_adi']}\n";
+			
+			// Bu müşteriye bu kayıt için bugün SMS gönderilmiş mi kontrol et
+			$check = $this->db
+				->where('cari_id', $customer['cari_id'])
+				->where('kayit_id', $customer['kayit_id'])
+				->where('tahsilat_tipi', $customer['tahsilat_tipi'])
+				->where('DATE(gonderim_tarihi)', date('Y-m-d'))
+				->get('sms_log');
+			
+			if ($check->num_rows() > 0) {
+				echo "  → ATLANDI: Bu müşteriye bugün zaten SMS gönderilmiş\n";
+				echo "  Telefon: {$customer['telefon']}\n";
+				echo "  Ödeme: {$customer['odeme_turu']} - Vade: {$customer['vade_tarihi']} ({$customer['kalan_gun']} gün kala)\n\n";
+				$tekrar++;
+				continue;
+			}
+			
+			// Tarihi formatla
+			$aylar = ['Ocak', 'Subat', 'Mart', 'Nisan', 'Mayis', 'Haziran', 
+					  'Temmuz', 'Agustos', 'Eylul', 'Ekim', 'Kasim', 'Aralik'];
+			$tarih = new DateTime($customer['vade_tarihi']);
+			$vade_tarihi_fmt = $tarih->format('d') . ' ' . $aylar[(int)$tarih->format('m') - 1] . ' ' . $tarih->format('Y');
+			
+			// Ödeme türünü büyük harfe çevir
+			$odeme_turu = mb_convert_case($customer['odeme_turu'], MB_CASE_UPPER, 'UTF-8');
+			$odeme_turu = str_replace(['İ', 'Ş', 'Ğ', 'Ü', 'Ö', 'Ç'], ['I', 'S', 'G', 'U', 'O', 'C'], $odeme_turu);
+			
+			// Mesajı hazırla
+			$mesaj = str_replace('[ODEME_TURU]', $odeme_turu, $sms_template);
+			$mesaj = str_replace('[VADE_TARIHI]', $vade_tarihi_fmt, $mesaj);
+			
+			// Telefonu formatla
+			$telefon = preg_replace('/[^0-9]/', '', $customer['telefon']);
+			if (substr($telefon, 0, 1) === '0') {
+				$telefon = '90' . substr($telefon, 1);
+			} elseif (substr($telefon, 0, 2) !== '90') {
+				$telefon = '90' . $telefon;
+			}
+			
+			// SMS gönder
+			$xml_body = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+			$xml_body .= '<MainmsgBody>' . "\n";
+			$xml_body .= '    <UserName>' . $config['sms_username'] . '</UserName>' . "\n";
+			$xml_body .= '    <PassWord>' . $config['sms_password'] . '</PassWord>' . "\n";
+			$xml_body .= '    <Action>' . $config['sms_action'] . '</Action>' . "\n";
+			$xml_body .= '    <Mesgbody>' . htmlspecialchars($mesaj) . '</Mesgbody>' . "\n";
+			$xml_body .= '    <Numbers>' . $telefon . '</Numbers>' . "\n";
+			$xml_body .= '    <Originator>' . $config['sms_originator'] . '</Originator>' . "\n";
+			$xml_body .= '    <SDate></SDate>' . "\n";
+			$xml_body .= '</MainmsgBody>';
+			
+			$ch = curl_init();
+			curl_setopt($ch, CURLOPT_URL, $config['sms_api_url']);
+			curl_setopt($ch, CURLOPT_POST, true);
+			curl_setopt($ch, CURLOPT_POSTFIELDS, $xml_body);
+			curl_setopt($ch, CURLOPT_HTTPHEADER, array(
+				'Content-Type: text/xml',
+				'Content-Length: ' . strlen($xml_body)
+			));
+			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+			curl_setopt($ch, CURLOPT_TIMEOUT, $config['sms_timeout']);
+			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+			
+			$response = curl_exec($ch);
+			$curl_error = curl_error($ch);
+			$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+			curl_close($ch);
+			
+			// Durum
+			$durum = ($http_code == 200 && empty($curl_error)) ? 'basarili' : 'basarisiz';
+			$hata_mesaji = ($durum === 'basarisiz') ? ($curl_error ?: $response) : null;
+			
+			// Logla
+			$this->db->insert('sms_log', [
+				'cari_id' => $customer['cari_id'],
+				'telefon' => $telefon,
+				'mesaj' => $mesaj,
+				'tip' => 'vade_hatirlatma',
+				'durum' => $durum,
+				'hata_mesaji' => $hata_mesaji,
+				'odeme_turu' => $customer['odeme_turu'],
+				'kayit_id' => $customer['kayit_id'],
+				'tahsilat_tipi' => $customer['tahsilat_tipi'],
+				'api_response' => $response
+			]);
+			
+			if ($durum === 'basarili') {
+				echo "  ✓ BAŞARILI: SMS gönderildi\n";
+				$basarili++;
+			} else {
+				echo "  ✗ BAŞARISIZ: " . ($curl_error ?: $response) . "\n";
+				$basarisiz++;
+			}
+			
+			echo "  Telefon: {$telefon}\n";
+			echo "  Ödeme: {$customer['odeme_turu']} - Vade: {$customer['vade_tarihi']} ({$customer['kalan_gun']} gün kala)\n";
+			echo "  HTTP Code: {$http_code}\n\n";
+			
+			// API'yi yormamak için bekleme (500ms)
+			usleep(500000);
+		}
+		
+		echo str_repeat('=', 80) . "\n";
+		echo "ÖZET RAPOR:\n";
+		echo "- Toplam Bulunan: " . count($customers) . "\n";
+		echo "- Başarılı: {$basarili}\n";
+		echo "- Başarısız: {$basarisiz}\n";
+		echo "- Tekrar (Bugün Gönderilmiş): {$tekrar}\n";
+		echo "\nBitiş Zamanı: " . date('Y-m-d H:i:s') . "\n";
+		echo "=== CRON JOB TAMAMLANDI ===\n";
 	}
 }

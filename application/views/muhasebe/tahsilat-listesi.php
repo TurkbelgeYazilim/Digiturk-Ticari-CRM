@@ -306,6 +306,94 @@
 
 		
 
+		/* Tahsilat Tipi Dropdown Checkbox Stilleri */
+
+		.tahsilat-tipi-dropdown .dropdown-menu {
+
+			max-height: 300px;
+
+			overflow-y: auto;
+
+		}
+
+		
+
+		.tahsilat-tipi-dropdown .dropdown-menu .custom-control {
+
+			cursor: pointer;
+
+		}
+
+		
+
+		.tahsilat-tipi-dropdown .dropdown-menu .custom-control:hover {
+
+			background-color: #f8f9fa;
+
+			border-radius: 4px;
+
+		}
+
+		
+
+		.tahsilat-tipi-dropdown .dropdown-menu .custom-control-label {
+
+			width: 100%;
+
+			cursor: pointer;
+
+			padding: 2px 0;
+
+		}
+
+		
+
+		.tahsilat-tipi-dropdown .dropdown-toggle {
+
+			text-align: left;
+
+			overflow: hidden;
+
+			text-overflow: ellipsis;
+
+			white-space: nowrap;
+
+		}
+
+		
+
+		.tahsilat-tipi-dropdown .dropdown-toggle .badge {
+
+			font-size: 0.75em;
+
+			margin-left: 5px;
+
+		}
+
+		
+
+		/* Checkbox stilleri */
+
+		.custom-control-input:checked ~ .custom-control-label::before {
+
+			background-color: #007bff;
+
+			border-color: #007bff;
+
+		}
+
+		
+
+		/* Dropdown menu click olayında kapanmaması için */
+
+		.tahsilat-tipi-dropdown .dropdown-menu {
+
+			padding: 8px;
+
+		}
+
+		
+
 		@media (max-width: 768px) {
 
 			.table-responsive {
@@ -404,7 +492,19 @@
 
 					<div class="col-sm-10">
 
-						<h3 class="page-title">Tahsilat Listesi</h3>
+						<h3 class="page-title">
+
+							<?php if(isset($ozel_sayfa) && $ozel_sayfa): ?>
+
+								Çek ve Senet Ödeme Beklenen Tahsilatlar
+
+							<?php else: ?>
+
+								Tahsilat Listesi
+
+							<?php endif; ?>
+
+						</h3>
 
 						<ul class="breadcrumb">
 
@@ -412,25 +512,35 @@
 
 							<li class="breadcrumb-item">Muhasebe</li>
 
-							<li class="breadcrumb-item active">Tahsilat Listesi</li>
+							<li class="breadcrumb-item active">
 
-						</ul>
+								<?php if(isset($ozel_sayfa) && $ozel_sayfa): ?>
 
-					</div>
+									Çek ve Senet Ödeme Beklenen Tahsilatlar
 
-					<div class="d-flex justify-content-end text-align-center col-sm-2">
+								<?php else: ?>
 
-						<a class="btn btn-outline-light" href="javascript:history.back()">
+									Tahsilat Listesi
 
-							<i class="fa fa-history"></i> <br>Önceki Sayfa
+								<?php endif; ?>
 
-						</a>
+							</li>
 
-					</div>
+					</ul>
 
 				</div>
 
-			</div>
+				<div class="d-flex justify-content-end text-align-center col-sm-2">
+
+					<a class="btn btn-outline-light btn-sm" href="javascript:history.back()">
+
+						<i class="fa fa-history"></i> <br>Önceki Sayfa
+
+					</a>
+
+				</div>
+
+			</div>			</div>
 
 			<!-- /Page Header -->
 
@@ -676,19 +786,85 @@
 
 										<label for="tahsilat_tipi">Tahsilat Tipi</label>
 
-										<select class="form-control" name="tahsilat_tipi" id="tahsilat_tipi">
+										<div class="dropdown tahsilat-tipi-dropdown">
 
-											<option value="">Tümü</option>
+											<button class="btn btn-outline-secondary dropdown-toggle w-100 text-left" type="button" id="tahsilatTipiDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
 
-											<option value="1" <?= ($filtre_tahsilat_tipi == '1') ? 'selected' : '' ?>>Banka</option>
+												<span id="tahsilatTipiLabel">Tahsilat tipini seçiniz...</span>
 
-											<option value="2" <?= ($filtre_tahsilat_tipi == '2') ? 'selected' : '' ?>>Çek</option>
+											</button>
 
-											<option value="3" <?= ($filtre_tahsilat_tipi == '3') ? 'selected' : '' ?>>Kasa</option>
+											<div class="dropdown-menu w-100 p-2" aria-labelledby="tahsilatTipiDropdown" style="min-width: 250px;">
 
-											<option value="4" <?= ($filtre_tahsilat_tipi == '4') ? 'selected' : '' ?>>Senet</option>
+												<div class="custom-control custom-checkbox mb-2">
 
-										</select>
+													<input type="checkbox" class="custom-control-input tahsilat-tipi-checkbox" name="tahsilat_tipi[]" value="1" id="tahsilat_tipi_1" <?= (is_array($filtre_tahsilat_tipi) && in_array('1', $filtre_tahsilat_tipi)) || (!is_array($filtre_tahsilat_tipi) && $filtre_tahsilat_tipi == '1') ? 'checked' : '' ?>>
+
+													<label class="custom-control-label" for="tahsilat_tipi_1">
+
+														<i class="fa fa-university text-primary mr-2"></i>Banka
+
+													</label>
+
+												</div>
+
+												<div class="custom-control custom-checkbox mb-2">
+
+													<input type="checkbox" class="custom-control-input tahsilat-tipi-checkbox" name="tahsilat_tipi[]" value="2" id="tahsilat_tipi_2" <?= (is_array($filtre_tahsilat_tipi) && in_array('2', $filtre_tahsilat_tipi)) || (!is_array($filtre_tahsilat_tipi) && $filtre_tahsilat_tipi == '2') ? 'checked' : '' ?>>
+
+													<label class="custom-control-label" for="tahsilat_tipi_2">
+
+														<i class="fa fa-file-text-o text-success mr-2"></i>Çek
+
+													</label>
+
+												</div>
+
+												<div class="custom-control custom-checkbox mb-2">
+
+													<input type="checkbox" class="custom-control-input tahsilat-tipi-checkbox" name="tahsilat_tipi[]" value="3" id="tahsilat_tipi_3" <?= (is_array($filtre_tahsilat_tipi) && in_array('3', $filtre_tahsilat_tipi)) || (!is_array($filtre_tahsilat_tipi) && $filtre_tahsilat_tipi == '3') ? 'checked' : '' ?>>
+
+													<label class="custom-control-label" for="tahsilat_tipi_3">
+
+														<i class="fa fa-money text-warning mr-2"></i>Kasa
+
+													</label>
+
+												</div>
+
+												<div class="custom-control custom-checkbox mb-2">
+
+													<input type="checkbox" class="custom-control-input tahsilat-tipi-checkbox" name="tahsilat_tipi[]" value="4" id="tahsilat_tipi_4" <?= (is_array($filtre_tahsilat_tipi) && in_array('4', $filtre_tahsilat_tipi)) || (!is_array($filtre_tahsilat_tipi) && $filtre_tahsilat_tipi == '4') ? 'checked' : '' ?>>
+
+													<label class="custom-control-label" for="tahsilat_tipi_4">
+
+														<i class="fa fa-file-o text-info mr-2"></i>Senet
+
+													</label>
+
+												</div>
+
+												<div class="dropdown-divider"></div>
+
+												<div class="text-center">
+
+													<button type="button" class="btn btn-sm btn-outline-primary" onclick="tahsilatTipiTumunuSec()">
+
+														<i class="fa fa-check-square-o"></i> Tümünü Seç
+
+													</button>
+
+													<button type="button" class="btn btn-sm btn-outline-secondary ml-1" onclick="tahsilatTipiTumunuTemizle()">
+
+														<i class="fa fa-square-o"></i> Temizle
+
+													</button>
+
+												</div>
+
+											</div>
+
+										</div>
 
 									</div>
 
@@ -704,11 +880,11 @@
 
 											<option value="">Tümü</option>
 
-											<option value="1" <?= ($filtre_durum == '1') ? 'selected' : '' ?>>Onay Bekliyor</option>
+											<option value="1" <?= ($filtre_durum == '1') ? 'selected' : '' ?>>Ödeme Bekleniyor</option>
 
-											<option value="2" <?= ($filtre_durum == '2') ? 'selected' : '' ?>>Onaylandı</option>
+											<option value="2" <?= ($filtre_durum == '2') ? 'selected' : '' ?>>Ödeme Alındı</option>
 
-											<option value="3" <?= ($filtre_durum == '3') ? 'selected' : '' ?>>Reddedildi</option>
+											<option value="3" <?= ($filtre_durum == '3') ? 'selected' : '' ?>>İşlem Başarısız</option>
 
 										</select>
 
@@ -744,33 +920,31 @@
 
 									</div>
 
-									
+								</div>
 
-									<!-- Tahsilat Ayı -->
+								
+
+								<div class="row">
+
+									<!-- Başlangıç Tarihi -->
 
 									<div class="col-md-3 col-sm-6 mb-3">
 
-										<label for="tahsilat_ayi">Tahsilat Ayı</label>
+										<label for="baslangic_tarih">Başlangıç Tarihi</label>
 
-										<select class="form-control" name="tahsilat_ayi" id="tahsilat_ayi">
+										<input type="date" class="form-control" name="baslangic_tarih" id="baslangic_tarih" value="<?= isset($filtre_baslangic_tarih) ? $filtre_baslangic_tarih : '' ?>">
 
-											<option value="">Tümü</option>
+									</div>
 
-											<?php if (isset($tahsilat_aylari) && !empty($tahsilat_aylari)): ?>
+									
 
-												<?php foreach($tahsilat_aylari as $ay): ?>
+									<!-- Bitiş Tarihi -->
 
-													<option value="<?= $ay->deger ?>" <?= ($filtre_tahsilat_ayi == $ay->deger) ? 'selected' : '' ?>>
+									<div class="col-md-3 col-sm-6 mb-3">
 
-														<?= $ay->adi ?>
+										<label for="bitis_tarih">Bitiş Tarihi</label>
 
-													</option>
-
-												<?php endforeach; ?>
-
-											<?php endif; ?>
-
-										</select>
+										<input type="date" class="form-control" name="bitis_tarih" id="bitis_tarih" value="<?= isset($filtre_bitis_tarih) ? $filtre_bitis_tarih : '' ?>">
 
 									</div>
 
@@ -790,7 +964,7 @@
 
 										
 
-										<?php if (!empty($filtre_tahsilat_tipi) || !empty($filtre_durum) || !empty($filtre_personel) || !empty($filtre_tahsilat_ayi)): ?>
+										<?php if (!empty($filtre_tahsilat_tipi) || !empty($filtre_durum) || !empty($filtre_personel) || !empty($filtre_baslangic_tarih) || !empty($filtre_bitis_tarih)): ?>
 
 											<span class="badge badge-info ml-2">
 
@@ -834,33 +1008,70 @@
 
 										<i class="fa fa-list text-primary mr-2"></i>
 
-										Tüm Tahsilatlar
+										<?php if(isset($ozel_sayfa) && $ozel_sayfa): ?>
+
+											Çek ve Senet Ödeme Beklenen Tahsilatlar
+
+										<?php else: ?>
+
+											Tüm Tahsilatlar
+
+										<?php endif; ?>
 
 									</h4>
 
 									<p class="text-muted mb-0">
 
-										<small>Tüm tahsilatlar durum farkı gözetmeksizin listelenmektedir</small>
+										<?php if(isset($ozel_sayfa) && $ozel_sayfa): ?>
+
+											<small>Bugün ve sonrası vade tarihli, ödeme beklenen çek ve senet tahsilatları listelenmektedir</small>
+
+										<?php else: ?>
+
+											<small>Tüm tahsilatlar durum farkı gözetmeksizin listelenmektedir</small>
+
+										<?php endif; ?>
 
 									</p>
 
-								</div>
+							</div>
 
-								<div class="col-auto">
+							<div class="col-auto">
 
-									<button type="button" class="btn btn-primary btn-sm" onclick="location.reload()">
+								<?php 
+									// Excel export için query string oluştur
+									$qs = '?';
+									if(!empty($_GET['tahsilat_tipi'])) {
+										if(is_array($_GET['tahsilat_tipi'])) {
+											foreach($_GET['tahsilat_tipi'] as $tip) {
+												$qs .= 'tahsilat_tipi[]=' . urlencode($tip) . '&';
+											}
+										} else {
+											$qs .= 'tahsilat_tipi=' . urlencode($_GET['tahsilat_tipi']) . '&';
+										}
+									}
+									if(!empty($_GET['durum'])) $qs .= 'durum=' . urlencode($_GET['durum']) . '&';
+									if(!empty($_GET['personel'])) $qs .= 'personel=' . urlencode($_GET['personel']) . '&';
+									if(!empty($_GET['baslangic_tarih'])) $qs .= 'baslangic_tarih=' . urlencode($_GET['baslangic_tarih']) . '&';
+									if(!empty($_GET['bitis_tarih'])) $qs .= 'bitis_tarih=' . urlencode($_GET['bitis_tarih']) . '&';
+									$qs = rtrim($qs, '&');
+									if($qs == '?') $qs = '';
+								?>
+								<a href="<?= base_url("muhasebe/tahsilatListesiExcel$qs"); ?>" class="btn btn-outline-success btn-sm mr-2">
+									<i class="fa fa-file-excel"></i> Excel
+								</a>
 
-										<i class="fa fa-refresh"></i> Yenile
+								<button type="button" class="btn btn-primary btn-sm" onclick="location.reload()">
 
-									</button>
+									<i class="fa fa-refresh"></i> Yenile
 
-								</div>
+								</button>
 
 							</div>
 
 						</div>
 
-
+					</div>
 
 						<?php if (isset($error_message)): ?>
 
@@ -924,7 +1135,7 @@
 
 											<th>Durum</th>
 
-											<th>İşlemi Yapan</th>
+											<th>Vade Tarihi</th>
 
 											<th>Onay Yapan</th>
 
@@ -1116,9 +1327,9 @@
 
 														<?php endif; ?>
 
-														<?php if($tahsilat->cek_vade_tarihi): ?>
+														<?php if($tahsilat->cek_vade_tarih): ?>
 
-															<small class="d-block"><strong>Vade:</strong> <?= date('d.m.Y', strtotime($tahsilat->cek_vade_tarihi)) ?></small>
+															<small class="d-block"><strong>Vade:</strong> <?= date('d.m.Y', strtotime($tahsilat->cek_vade_tarih)) ?></small>
 
 														<?php endif; ?>
 
@@ -1160,7 +1371,7 @@
 
 													<span class="badge badge-warning">
 
-														<i class="fa fa-clock-o mr-1"></i>Onay Bekliyor
+														<i class="fa fa-clock-o mr-1"></i>Ödeme Bekleniyor
 
 													</span>
 
@@ -1168,7 +1379,7 @@
 
 													<span class="badge badge-success">
 
-														<i class="fa fa-check mr-1"></i>Onaylandı
+														<i class="fa fa-check mr-1"></i>Ödeme Alındı
 
 													</span>
 
@@ -1176,7 +1387,7 @@
 
 													<span class="badge badge-danger">
 
-														<i class="fa fa-times mr-1"></i>Reddedildi
+														<i class="fa fa-times mr-1"></i>İşlem Başarısız
 
 													</span>
 
@@ -1190,9 +1401,37 @@
 
 											<td>
 
-												<i class="fa fa-user text-info mr-1"></i>
+												<?php 
 
-												<?= $tahsilat->islemi_yapan_personel ?: 'Bilinmiyor' ?>
+												// Vade tarihini tahsilat tipine göre göster
+
+												$vade_tarihi = null;
+
+												if($tahsilat->tahsilat_tipi == 2 && isset($tahsilat->cek_vade_tarih) && $tahsilat->cek_vade_tarih) {
+
+													// Çek vade tarihi
+
+													$vade_tarihi = $tahsilat->cek_vade_tarih;
+
+												} elseif($tahsilat->tahsilat_tipi == 4 && isset($tahsilat->senet_vade_tarih) && $tahsilat->senet_vade_tarih) {
+
+													// Senet vade tarihi
+
+													$vade_tarihi = $tahsilat->senet_vade_tarih;
+
+												}
+
+												
+
+												if($vade_tarihi): ?>
+
+													<strong><?= date('d.m.Y', strtotime($vade_tarihi)) ?></strong>
+
+												<?php else: ?>
+
+													<span class="text-muted">-</span>
+
+												<?php endif; ?>
 
 											</td>
 
@@ -1635,7 +1874,7 @@
 					</div>
 					<div class="alert alert-warning">
 						<strong><i class="fa fa-exclamation-triangle mr-2"></i>Dikkat!</strong><br>
-						Bu işlem tahsilatı tekrar <strong>"Onay Bekliyor"</strong> durumuna getirecektir.<br>
+						Bu işlem tahsilatı tekrar <strong>"Ödeme Bekleniyor"</strong> durumuna getirecektir.<br>
 						Onay görseli ve onay bilgileri silinecektir.
 					</div>
 				</div>
@@ -1680,7 +1919,7 @@ $(document).ready(function() {
 
 		"columnDefs": [
 
-			{ "orderable": false, "targets": [4, 9, 11] } // Çek Detayları, Görsel ve İşlemler sütunları sıralanamaz
+			{ "orderable": false, "targets": [4, 9, 11] } // Detaylar, Görsel ve İşlemler sütunları sıralanamaz
 
 		]
 
@@ -1772,7 +2011,7 @@ $(document).ready(function() {
 
 function filtreleriTemizle() {
 
-	// Tüm select elementlerini sıfırla
+	// Tüm select ve input elementlerini sıfırla
 
 	$('#tahsilat_tipi').val('');
 
@@ -1780,7 +2019,9 @@ function filtreleriTemizle() {
 
 	$('#personel').val('');
 
-	$('#tahsilat_ayi').val('');
+	$('#baslangic_tarih').val('');
+
+	$('#bitis_tarih').val('');
 
 	
 
@@ -1864,7 +2105,80 @@ toastr.error('<?= $this->session->flashdata('tahsilat_geri_al_hata') ?>', 'Hata'
 
 <?php endif; ?>
 
+<script>
+$(document).ready(function() {
+    // Tahsilat Tipi Dropdown + Checkbox İşlemleri
+    
+    // Dropdown menüsünün checkbox'a tıklandığında kapanmaması için
+    $('.tahsilat-tipi-dropdown .dropdown-menu').on('click', function(e) {
+        e.stopPropagation();
+    });
+    
+    // Checkbox değişikliklerini dinle ve label'ı güncelle
+    $('.tahsilat-tipi-checkbox').on('change', function() {
+        updateTahsilatTipiLabel();
+    });
+    
+    // Sayfa yüklendiğinde label'ı güncelle
+    updateTahsilatTipiLabel();
+    
+    // Filtreleri Temizle fonksiyonu güncelleme
+    window.filtreleriTemizle = function() {
+        $('.tahsilat-tipi-checkbox').prop('checked', false);
+        $('#durum').val('');
+        $('#personel').val('');
+        $('#tahsilat_ayi').val('');
+        $('#filtreForm')[0].reset();
+        updateTahsilatTipiLabel();
+        
+        // URL'yi temizle ve sayfayı yenile
+        window.location.href = window.location.pathname;
+    };
+});
 
+// Tahsilat Tipi Label'ını Güncelle
+function updateTahsilatTipiLabel() {
+    var checkedBoxes = $('.tahsilat-tipi-checkbox:checked');
+    var labelText = '';
+    var labelElement = $('#tahsilatTipiLabel');
+    
+    if (checkedBoxes.length === 0) {
+        labelText = 'Tahsilat tipini seçiniz...';
+        labelElement.removeClass('text-primary font-weight-bold');
+    } else {
+        var selectedTypes = [];
+        checkedBoxes.each(function() {
+            var value = $(this).val();
+            var text = $(this).next('label').text().trim();
+            selectedTypes.push(text);
+        });
+        
+        if (checkedBoxes.length === 1) {
+            labelText = selectedTypes[0];
+        } else if (checkedBoxes.length <= 2) {
+            labelText = selectedTypes.join(', ');
+        } else {
+            labelText = selectedTypes[0] + ' ve ' + (checkedBoxes.length - 1) + ' diğer';
+        }
+        
+        labelElement.addClass('text-primary font-weight-bold');
+    }
+    
+    labelElement.text(labelText);
+}
+
+// Tümünü Seç
+function tahsilatTipiTumunuSec() {
+    $('.tahsilat-tipi-checkbox').prop('checked', true);
+    updateTahsilatTipiLabel();
+}
+
+// Tümünü Temizle
+function tahsilatTipiTumunuTemizle() {
+    $('.tahsilat-tipi-checkbox').prop('checked', false);
+    updateTahsilatTipiLabel();
+}
+</script>
 
 </body>
 

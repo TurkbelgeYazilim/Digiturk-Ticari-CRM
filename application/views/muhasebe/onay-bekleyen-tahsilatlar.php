@@ -222,7 +222,7 @@ if (!isset($tahsilatlar)) {
 
 						<div class="card-body">
 
-							<div class="stats-number">
+							<div class="stats-number" id="toplamAdetStat">
 
 								<?= isset($toplam_adet) ? $toplam_adet : count($tahsilatlar) ?>
 
@@ -244,7 +244,7 @@ if (!isset($tahsilatlar)) {
 
 						<div class="card-body">
 
-							<div class="stats-number">
+							<div class="stats-number" id="toplamTutarStat">
 
 								<?= number_format($toplam_tutar, 2, ',', '.') ?> ₺
 
@@ -264,7 +264,7 @@ if (!isset($tahsilatlar)) {
 
 					<div class="card card-stats">
 
-						<div class="card-body">							<div class="stats-number">
+						<div class="card-body">							<div class="stats-number" id="bekleyenSayiStat">
 
 								<?php 
 
@@ -287,6 +287,142 @@ if (!isset($tahsilatlar)) {
 						</div>
 
 					</div>
+
+				</div>
+
+			</div>
+
+			
+
+			<!-- Filtre Alanı -->
+
+			<div class="row mb-3">
+
+				<div class="col-md-2">
+
+					<div class="form-group">
+
+						<label for="tahsilatTipiFilter">Tahsilat Tipi</label>
+
+						<select id="tahsilatTipiFilter" class="form-control">
+
+							<option value="">Tümü</option>
+
+							<option value="Banka Hareketi">Banka Hareketi</option>
+
+							<option value="Çek">Çek</option>
+
+							<option value="Kasa Hareketi">Kasa Hareketi</option>
+
+							<option value="Senet">Senet</option>
+
+						</select>
+
+					</div>
+
+				</div>
+
+				<div class="col-md-2">
+
+					<div class="form-group">
+
+						<label for="hizmetFilter">Hizmet</label>
+
+						<select id="hizmetFilter" class="form-control">
+
+							<option value="">Tümü</option>
+
+							<?php
+
+							$ci = get_instance();
+
+							$stokGrupQ = "SELECT DISTINCT stokGrup_ad FROM stokGruplari ORDER BY stokGrup_ad ASC";
+
+							$stokGruplar = $ci->db->query($stokGrupQ)->result();
+
+							foreach($stokGruplar as $sg):
+
+							?>
+
+							<option value="<?= $sg->stokGrup_ad ?>"><?= $sg->stokGrup_ad ?></option>
+
+							<?php endforeach; ?>
+
+						</select>
+
+					</div>
+
+				</div>
+
+				<div class="col-md-2">
+
+					<div class="form-group">
+
+						<label for="durumFilter">Durum</label>
+
+						<select id="durumFilter" class="form-control">
+
+							<option value="">Tümü</option>
+
+							<option value="Onay Bekliyor" selected>Onay Bekliyor</option>
+
+							<option value="Onaylandı">Onaylandı</option>
+
+							<option value="Reddedildi">Reddedildi</option>
+
+						</select>
+
+					</div>
+
+				</div>
+
+				<div class="col-md-2">
+
+					<div class="form-group">
+
+						<label for="islemiYapanFilter">İşlemi Yapan</label>
+
+						<input type="text" id="islemiYapanFilter" class="form-control" placeholder="Ara...">
+
+					</div>
+
+				</div>
+
+				<div class="col-md-2">
+
+					<div class="form-group">
+
+						<label for="onayYapanFilter">Onay Yapan</label>
+
+						<input type="text" id="onayYapanFilter" class="form-control" placeholder="Ara...">
+
+					</div>
+
+				</div>
+
+				<div class="col-md-2">
+
+					<div class="form-group">
+
+						<label for="tarihFilter">İşlem Tarihi</label>
+
+						<input type="date" id="tarihFilter" class="form-control">
+
+					</div>
+
+				</div>
+
+			</div>
+
+			<div class="row mb-3">
+
+				<div class="col-md-12 text-right">
+
+					<button id="clearFilters" class="btn btn-secondary">
+
+						<i class="fa fa-eraser"></i> Filtreleri Temizle
+
+					</button>
 
 				</div>
 
@@ -412,6 +548,8 @@ if (!isset($tahsilatlar)) {
 
 											<th>Tutar</th>
 
+											<th>Hizmet</th>
+
 											<th>Durum</th>
 
 											<th>İşlemi Yapan</th>
@@ -475,6 +613,20 @@ if (!isset($tahsilatlar)) {
 											<td>
 
 												<span class="tutar-buyuk"><?= $tahsilat->tutar ? number_format($tahsilat->tutar, 2, ',', '.') . ' ₺' : '-' ?></span>
+
+											</td>
+
+											<td>
+
+												<?php if($tahsilat->hizmet): ?>
+
+													<span class="badge badge-info"><?= $tahsilat->hizmet ?></span>
+
+												<?php else: ?>
+
+													<span class="text-muted">-</span>
+
+												<?php endif; ?>
 
 											</td>
 
@@ -858,7 +1010,7 @@ if (!isset($tahsilatlar)) {
 
 $(document).ready(function() {	// DataTable başlat
 
-	$('#tahsilatlarTable').DataTable({
+	var table = $('#tahsilatlarTable').DataTable({
 
 		"language": {
 
@@ -868,13 +1020,173 @@ $(document).ready(function() {	// DataTable başlat
 
 		"pageLength": 25,
 
-		"order": [[ 7, "desc" ]], // İşlem Tarihi kolonuna göre azalan sıralama (index 7)
+		"order": [[ 8, "desc" ]], // İşlem Tarihi kolonuna göre azalan sıralama (index 8)
 
 		"columnDefs": [
 
-			{ "orderable": false, "targets": [8, 10] } // Görsel ve İşlemler kolonlarını sıralama dışı bırak
+			{ "orderable": false, "targets": [9, 11] } // Görsel ve İşlemler kolonlarını sıralama dışı bırak
 
 		]
+
+	});
+
+	
+
+	// İstatistikleri Güncelle Fonksiyonu
+
+	function updateStatistics() {
+
+		var filteredData = table.rows({ search: 'applied' }).data();
+
+		var toplamAdet = filteredData.length;
+
+		var toplamTutar = 0;
+
+		
+
+		// Filtrelenmiş satırlardaki tutarları topla
+
+		filteredData.each(function(row) {
+
+			// Tutar kolonu index 3
+
+			var tutarText = $(row[3]).text().trim();
+
+			// "123.456,78 ₺" formatından sayıya çevir
+
+			if (tutarText && tutarText !== '-') {
+
+				var tutarStr = tutarText.replace(' ₺', '').replace(/\./g, '').replace(',', '.');
+
+				var tutar = parseFloat(tutarStr);
+
+				if (!isNaN(tutar)) {
+
+					toplamTutar += tutar;
+
+				}
+
+			}
+
+		});
+
+		
+
+		// Kartları güncelle
+
+		$('#toplamAdetStat').text(toplamAdet);
+
+		$('#toplamTutarStat').text(toplamTutar.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ₺');
+
+		$('#bekleyenSayiStat').text(toplamAdet);
+
+	}
+
+	
+
+	// Tablo her çizildiğinde istatistikleri güncelle
+
+	table.on('draw', function() {
+
+		updateStatistics();
+
+	});
+
+	
+
+	// Tahsilat Tipi Filtreleme (Index 1)
+
+	$('#tahsilatTipiFilter').on('change', function() {
+
+		table.column(1).search($(this).val()).draw();
+
+	});
+
+	
+
+	// Hizmet Filtreleme (Index 4)
+
+	$('#hizmetFilter').on('change', function() {
+
+		table.column(4).search($(this).val()).draw();
+
+	});
+
+	
+
+	// Durum Filtreleme (Index 5)
+
+	$('#durumFilter').on('change', function() {
+
+		table.column(5).search($(this).val()).draw();
+
+	});
+
+	
+
+	// İşlemi Yapan Filtreleme (Index 6)
+
+	$('#islemiYapanFilter').on('keyup', function() {
+
+		table.column(6).search($(this).val()).draw();
+
+	});
+
+	
+
+	// Onay Yapan Filtreleme (Index 7)
+
+	$('#onayYapanFilter').on('keyup', function() {
+
+		table.column(7).search($(this).val()).draw();
+
+	});
+
+	
+
+	// Tarih Filtreleme (Index 8)
+
+	$('#tarihFilter').on('change', function() {
+
+		var selectedDate = $(this).val();
+
+		if (selectedDate) {
+
+			// Tarihi DD.MM.YYYY formatına çevir
+
+			var dateParts = selectedDate.split('-');
+
+			var formattedDate = dateParts[2] + '.' + dateParts[1] + '.' + dateParts[0];
+
+			table.column(8).search(formattedDate).draw();
+
+		} else {
+
+			table.column(8).search('').draw();
+
+		}
+
+	});
+
+	
+
+	// Filtreleri Temizle
+
+	$('#clearFilters').on('click', function() {
+
+		$('#tahsilatTipiFilter').val('');
+
+		$('#hizmetFilter').val('');
+
+		$('#durumFilter').val('');
+
+		$('#islemiYapanFilter').val('');
+
+		$('#onayYapanFilter').val('');
+
+		$('#tarihFilter').val('');
+
+		table.search('').columns().search('').draw();
 
 	});
 

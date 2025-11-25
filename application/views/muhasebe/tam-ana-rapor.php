@@ -33,6 +33,11 @@
 			border-left: 4px solid #17a2b8;
 		}
 		
+		.rapor-hizmet-onaylanan {
+			background-color: #fff3cd !important;
+			border-left: 4px solid #ffc107 !important;
+		}
+		
 		.tutar-buyuk {
 			font-size: 1.2em;
 			font-weight: bold;
@@ -780,7 +785,19 @@
 														</div>
 														<div class="col-md-2">
 															<div class="form-group">
-																<label>&nbsp;</label>
+																<label for="odeme_durumu">Ödeme Durumu</label>
+																<select class="form-control" id="odeme_durumu" name="odeme_durumu">
+																	<option value="">Tümü</option>
+																	<option value="1" <?= ($this->input->get('odeme_durumu') == '1') ? 'selected' : '' ?>>Ödeme Bekleniyor</option>
+																	<option value="2" <?= ($this->input->get('odeme_durumu') == '2') ? 'selected' : '' ?>>Ödeme Alındı</option>
+																	<option value="3" <?= ($this->input->get('odeme_durumu') == '3') ? 'selected' : '' ?>>İşlem Başarısız</option>
+																</select>
+															</div>
+														</div>
+													</div>
+													<div class="row">
+														<div class="col-md-12">
+															<div class="form-group">
 																<div class="d-flex">
 																	<button type="submit" class="btn btn-primary mr-2">
 																		<i class="fa fa-search"></i> Ara
@@ -822,17 +839,26 @@
 											<?php foreach ($rapor_verileri as $veri): ?>
 												<?php
 												$row_class = '';
-												switch($veri->aktivasyon_durum) {
-													case 'Aktif': 
-													case 'Tamamlandı': $row_class = 'rapor-onaylanan'; break;
-													case 'Beklemede': 
-													case 'İşlemde': $row_class = 'rapor-onay-bekliyor'; break;
-													case 'İptal': 
-													case 'Reddedildi': $row_class = 'rapor-reddedilen'; break;
-													default: $row_class = 'rapor-onay-bekliyor'; break;
+												
+												// Öncelikle hizmet durumu kontrolü (onaylanmış tahsilat varsa sarı)
+												$is_hizmet_onaylanan = isset($onaylanan_cari_idleri) && in_array($veri->cari_id, $onaylanan_cari_idleri);
+												
+												if ($is_hizmet_onaylanan) {
+													$row_class = 'rapor-hizmet-onaylanan';
+												} else {
+													// Hizmet onaylanmamışsa aktivasyon durumuna göre renklendirme
+													switch($veri->aktivasyon_durum) {
+														case 'Aktif': 
+														case 'Tamamlandı': $row_class = 'rapor-onaylanan'; break;
+														case 'Beklemede': 
+														case 'İşlemde': $row_class = 'rapor-onay-bekliyor'; break;
+														case 'İptal': 
+														case 'Reddedildi': $row_class = 'rapor-reddedilen'; break;
+														default: $row_class = 'rapor-onay-bekliyor'; break;
+													}
 												}
 												?>
-												<tr class="<?= $row_class ?>">
+												<tr class="<?= $row_class ?>"<?= $is_hizmet_onaylanan ? ' title="Bu carinin tahsilatları onaylanmıştır (Hizmet Durumu: Onaylandı)"' : '' ?>>
 													<td data-order="<?= $veri->kayit_tarihi ? strtotime($veri->kayit_tarihi) : 0 ?>"><?= $veri->kayit_tarihi ? date('d.m.Y', strtotime($veri->kayit_tarihi)) : '-' ?></td>
 													<td>
 														<?php if (isset($veri->cari_id) && !empty($veri->cari_id)): ?>
@@ -927,8 +953,10 @@
 													<td>
 														<?php if (isset($veri->satis_sozlesme_id) && !empty($veri->satis_sozlesme_id)): ?>
 															<div class="satis-hizmet-container">
-																<button class="btn btn-sm btn-success"
-																		onclick="openStokBilgisiModal(<?= $veri->satis_sozlesme_id ?>, <?= $veri->cari_id ?>, '<?= htmlspecialchars($veri->cari_isletme, ENT_QUOTES) ?>')"
+																<button class="btn btn-sm btn-success btn-stok-bilgileri"
+																		data-satis-id="<?= $veri->satis_sozlesme_id ?>"
+																		data-cari-id="<?= $veri->cari_id ?>"
+																		data-cari-isletme="<?= htmlspecialchars($veri->cari_isletme, ENT_QUOTES) ?>"
 																		title="Stok bilgilerini görüntüle ve düzenle (ID: <?= $veri->satis_sozlesme_id ?>)">
 																	<?php if (isset($veri->satis_sozlesme_hizmeti) && !empty($veri->satis_sozlesme_hizmeti)): ?>
 																		<i class="fa fa-box mr-1"></i>
@@ -962,8 +990,9 @@
 																	<?= htmlspecialchars($veri->satis_sozlesme_hizmeti) ?>
 																</span>
 															<?php else: ?>
-																<button class="btn btn-sm btn-success" 
-																		onclick="openSatisSozlesmeModal(<?= $veri->cari_id ?>, '<?= htmlspecialchars($veri->cari_isletme, ENT_QUOTES) ?>')"
+																<button class="btn btn-sm btn-success btn-satis-sozlesme" 
+																		data-cari-id="<?= $veri->cari_id ?>"
+																		data-cari-isletme="<?= htmlspecialchars($veri->cari_isletme, ENT_QUOTES) ?>"
 																		title="Satış sözleşmesi oluştur">
 																	<i class="fa fa-plus mr-1"></i>
 																	Sözleşme Oluştur
@@ -1001,8 +1030,9 @@
 													</td>
 													<td data-order="<?= $veri->tahsilat_tutar ? floatval($veri->tahsilat_tutar) : -1 ?>">
 														<?php if ($veri->tahsilat_tutar): ?>
-															<span class="tutar-buyuk text-success" style="cursor: pointer;" 
-																  onclick="showTahsilatModal(<?= $veri->cari_id ?>, '<?= htmlspecialchars($veri->cari_isletme) ?>')"
+															<span class="tutar-buyuk text-success tahsilat-link" style="cursor: pointer;" 
+																  data-cari-id="<?= $veri->cari_id ?>"
+																  data-cari-isletme="<?= htmlspecialchars($veri->cari_isletme, ENT_QUOTES) ?>"
 																  title="Tahsilat detaylarını görmek için tıklayın">
 																<?= number_format($veri->tahsilat_tutar, 0, ',', '.') ?> ₺
 															</span>
@@ -1142,7 +1172,7 @@
 																	class="btn btn-sm btn-outline-danger btn-cari-sil"
 																	title="Cari kaydını sil"
 																	data-cari-id="<?= htmlspecialchars($veri->cari_id) ?>"
-																	data-cari-ad="<?= htmlspecialchars($veri->cari_isletme ?? 'Bilinmeyen Cari') ?>">
+																	data-cari-ad="<?= htmlspecialchars($veri->cari_isletme ?? 'Bilinmeyen Cari', ENT_QUOTES) ?>">
 																<i class="fa fa-trash"></i>
 															</button>
 														<?php else: ?>
@@ -1500,6 +1530,9 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <script>
+// Kullanıcı grup bilgisini JavaScript'e aktar
+const kullaniciGrupId = <?= isset($kullanici_grup_id) ? (int)$kullanici_grup_id : 'null' ?>;
+
 // Global fonksiyonları en başta tanımla
 function showTahsilatModal(cariId, cariAd) {
 	$('#tahsilatModalLabel').html('<i class="fa fa-money mr-2"></i>Tahsilat Detayları - ' + cariAd);
@@ -1521,6 +1554,17 @@ function showTahsilatModal(cariId, cariAd) {
 		success: function(response) {
 			$('#tahsilatLoading').hide();
 			$('#tahsilatContent').show();
+			
+			// JavaScript string escape fonksiyonu
+			function escapeJS(str) {
+				if (!str) return '';
+				return str.replace(/\\/g, '\\\\')
+						  .replace(/'/g, "\\'")
+						  .replace(/"/g, '\\"')
+						  .replace(/\n/g, '\\n')
+						  .replace(/\r/g, '\\r')
+						  .replace(/\t/g, '\\t');
+			}
 			
 			if (response.success && response.data.length > 0) {
 				let html = `
@@ -1549,7 +1593,7 @@ function showTahsilatModal(cariId, cariAd) {
 						<tr data-tahsilat-id="${item.unique_id}" data-tip-kod="${item.tip_kod}" data-source-id="${item.source_id}" data-ch-id="${item.cari_hareket_id}" data-original-tutar="${item.tutar}">
 							<td>${item.tarih}</td>
 							<td>${item.belge_no || '-'}</td>
-							<td><span class="badge badge-info">${item.tahsilat_tipi}</span></td>
+							<td><span class="badge badge-info">${escapeJS(item.tahsilat_tipi)}</span></td>
 							<td class="text-right">
 								<div class="input-group input-group-sm">
 									<input type="number" class="form-control tutar-input text-right" 
@@ -1572,7 +1616,7 @@ function showTahsilatModal(cariId, cariAd) {
 									</div>` : 
 									'<span class="text-muted">-</span>'}
 							</td>
-							<td style="max-width: 200px; word-wrap: break-word; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;" title="${item.aciklama || '-'}">${(item.aciklama && item.aciklama.length > 50) ? item.aciklama.substring(0, 50) + '...' : (item.aciklama || '-')}</td>
+							<td style="max-width: 200px; word-wrap: break-word; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;" title="${escapeJS(item.aciklama) || '-'}">${(item.aciklama && item.aciklama.length > 50) ? escapeJS(item.aciklama).substring(0, 50) + '...' : (escapeJS(item.aciklama) || '-')}</td>
 							<td>
 								${generateGorselButton(item)}
 							</td>
@@ -1730,6 +1774,17 @@ function tahsilatSil(uniqueId, tipKod, sourceId) {
 }
 
 function generateGorselButton(item) {
+	// JavaScript string escape fonksiyonu
+	function escapeJS(str) {
+		if (!str) return '';
+		return str.replace(/\\/g, '\\\\')
+				  .replace(/'/g, "\\'")
+				  .replace(/"/g, '\\"')
+				  .replace(/\n/g, '\\n')
+				  .replace(/\r/g, '\\r')
+				  .replace(/\t/g, '\\t');
+	}
+	
 	// Kasa hareketlerinde görsel alanı yok
 	if (item.tip_kod == '3') {
 		return '<span class="badge badge-secondary">Görsel Yok</span>';
@@ -1746,12 +1801,12 @@ function generateGorselButton(item) {
 			const text = isPdf ? 'PDF' : 'Görsel';
 			const btnClass = isPdf ? 'btn-danger' : 'btn-info';
 			
-			html += `<button class="btn btn-sm ${btnClass}" onclick="showGorsel('${item.gorseller[0].url}', '${item.tahsilat_tipi}')">
+			html += `<button class="btn btn-sm ${btnClass}" onclick="showGorsel('${escapeJS(item.gorseller[0].url)}', '${escapeJS(item.tahsilat_tipi)}')">
 				<i class="fa ${icon}"></i> ${text}
 			</button>`;
 		} else {
 			// Çoklu görsel
-			html += `<button class="btn btn-sm btn-info" onclick="showGorselGaleri('${item.unique_id}', '${item.tahsilat_tipi}', ${JSON.stringify(item.gorseller).replace(/"/g, '&quot;')})">
+			html += `<button class="btn btn-sm btn-info" onclick="showGorselGaleri('${escapeJS(item.unique_id)}', '${escapeJS(item.tahsilat_tipi)}', ${JSON.stringify(item.gorseller).replace(/"/g, '&quot;')})">
 				<i class="fa fa-images"></i> ${item.gorseller.length} Görsel
 			</button>`;
 		}
@@ -1774,6 +1829,28 @@ $(document).ready(function() {
 		"info": true,  // "X kayıt gösteriliyor" bilgisini göster
 		"lengthChange": true,  // Sayfa başına kayıt sayısı değiştirme seçeneği
 		"dom": 'lrtip'  // Search kutusunu (f) DOM'dan çıkar: l(ength), (f)ilter, (t)able, (i)nfo, (p)agination
+	});
+
+	// Stok Bilgileri butonu
+	$(document).on('click', '.btn-stok-bilgileri', function() {
+		var satisId = $(this).data('satis-id');
+		var cariId = $(this).data('cari-id');
+		var cariIsletme = $(this).data('cari-isletme');
+		openStokBilgisiModal(satisId, cariId, cariIsletme);
+	});
+	
+	// Satış Sözleşmesi butonu
+	$(document).on('click', '.btn-satis-sozlesme', function() {
+		var cariId = $(this).data('cari-id');
+		var cariIsletme = $(this).data('cari-isletme');
+		openSatisSozlesmeModal(cariId, cariIsletme);
+	});
+	
+	// Tahsilat link
+	$(document).on('click', '.tahsilat-link', function() {
+		var cariId = $(this).data('cari-id');
+		var cariIsletme = $(this).data('cari-isletme');
+		showTahsilatModal(cariId, cariIsletme);
 	});
 
 	// Cari silme işlemi
@@ -2545,6 +2622,7 @@ window.openStokBilgisiModal = function(satisId, cariId, cariIsletme) {
 									<th width="15%">Birim Fiyat (KDV Dahil)</th>
 									<th width="10%" style="display: none;">KDV (%)</th>
 									<th width="15%">Abonelik Bitiş Tarihi</th>
+									<th width="10%">Fatura</th>
 									<th width="5%">İşlem</th>
 								</tr>
 							</thead>
@@ -2572,6 +2650,7 @@ window.openStokBilgisiModal = function(satisId, cariId, cariIsletme) {
 								<td class="text-center">
 									<input type="text" class="form-control text-center" id="toplamTutar" value="0.00 ₺" readonly style="background-color: #f8f9fa; font-weight: bold; width: 120px;">
 								</td>
+								<td class="text-center">—</td>
 								<td class="text-center">—</td>
 								<td class="text-center">—</td>
 							</tr>
@@ -2668,8 +2747,12 @@ window.openStokBilgisiModal = function(satisId, cariId, cariIsletme) {
 											<input type="checkbox" class="custom-control-input tahsilat-onay-checkbox" 
 												   id="onay_${item.unique_id || tahsilatIndex}" 
 												   data-tahsilat-id="${item.unique_id || ''}" 
-												   ${item.onay_durumu == 1 ? 'checked' : ''}>
-											<label class="custom-control-label" for="onay_${item.unique_id || tahsilatIndex}"></label>
+												   data-onay-durumu="${item.onay_durumu || 0}"
+												   ${item.onay_durumu == 1 ? 'checked' : ''}
+												   ${item.onay_durumu == 1 && kullaniciGrupId !== 1 && kullaniciGrupId !== 2 ? 'disabled style="display:none;"' : ''}>
+											<label class="custom-control-label" for="onay_${item.unique_id || tahsilatIndex}" 
+												   ${item.onay_durumu == 1 && kullaniciGrupId !== 1 && kullaniciGrupId !== 2 ? 'style="display:none;"' : ''}></label>
+											${item.onay_durumu == 1 && kullaniciGrupId !== 1 && kullaniciGrupId !== 2 ? '<i class="fa fa-lock text-muted" title="Onaylanmış (Sadece yetkili kullanıcılar değiştirebilir)"></i>' : ''}
 										</div>
 									` : '—'}
 								</td>
@@ -2817,6 +2900,18 @@ function createStokRow(index, data = {}) {
 					   placeholder="Abonelik Bitiş Tarihi">
 			</td>
 			<td>
+				<div class="fatura-container">
+					<select class="form-control faturaKesildi" name="faturaKesildi[]" onchange="toggleFaturaDosyasi(this)" style="margin-bottom: 5px;">
+						<option value="0" ${(data.satisStok_faturaKesildi || 0) == 0 ? 'selected' : ''}>Hayır</option>
+						<option value="1" ${(data.satisStok_faturaKesildi || 0) == 1 ? 'selected' : ''}>Evet</option>
+					</select>
+					<div class="fatura-dosya-container" style="display: ${(data.satisStok_faturaKesildi || 0) == 1 ? 'block' : 'none'};">
+						<input type="file" class="form-control-file faturaDosyasi" name="faturaDosyasi_${index}" accept=".pdf,.jpg,.jpeg,.png" style="font-size: 12px;">
+						${data.satisStok_faturaDosyasi ? `<small class="text-success"><i class="fa fa-check"></i> <a href="${data.satisStok_faturaDosyasi}" target="_blank">Fatura Görüntüle</a></small>` : ''}
+					</div>
+				</div>
+			</td>
+			<td>
 				<button type="button" class="btn btn-danger btn-sm" onclick="stokSatiriSil(this)" 
 						title="Satırı sil">
 					<i class="fa fa-trash"></i>
@@ -2851,6 +2946,23 @@ function stokSatiriSil(button) {
 		hesaplaToplamTutar();
 	} else {
 		alert('En az bir stok satırı olması gereklidir.');
+	}
+}
+
+// Fatura dosyası alanını göster/gizle
+function toggleFaturaDosyasi(selectElement) {
+	const container = selectElement.closest('.fatura-container');
+	const dosyaContainer = container.querySelector('.fatura-dosya-container');
+	
+	if (selectElement.value == '1') {
+		dosyaContainer.style.display = 'block';
+	} else {
+		dosyaContainer.style.display = 'none';
+		// Hayır seçilince dosya inputunu temizle
+		const fileInput = dosyaContainer.querySelector('.faturaDosyasi');
+		if (fileInput) {
+			fileInput.value = '';
+		}
 	}
 }
 
@@ -3169,7 +3281,7 @@ $('#stokBilgisiKaydetBtn').click(function() {
 	
 	console.log('Kaydet clicked with:', { satisId, cariId });
 	
-	document.querySelectorAll('#stokTableBody tr').forEach(function(row) {
+	document.querySelectorAll('#stokTableBody tr').forEach(function(row, rowIndex) {
 		// Toplam satırını atla
 		if (row.classList.contains('toplam-satir')) {
 			return;
@@ -3185,6 +3297,8 @@ $('#stokBilgisiKaydetBtn').click(function() {
 		const birimFiyatEl = row.querySelector('.birimFiyat');
 		const kdvOraniEl = row.querySelector('.kdvOrani');
 		const abonelikBitisTarihiEl = row.querySelector('.abonelikBitisTarihi');
+		const faturaKesildiEl = row.querySelector('.faturaKesildi');
+		const faturaDosyasiEl = row.querySelector('.faturaDosyasi');
 		
 		if (!satisStokIdEl || !stokIdEl || !miktarEl || !birimFiyatEl || !kdvOraniEl || !abonelikBitisTarihiEl) {
 			console.warn('Bazı form elementleri bulunamadı:', {
@@ -3247,13 +3361,17 @@ $('#stokBilgisiKaydetBtn').click(function() {
 			miktar: parseTurkishNumber(miktarEl.value),
 			birim_fiyat: parseTurkishNumber(birimFiyatEl.value),
 			kdv_orani: kdvOraniEl.value,
-			abonelik_bitis_tarihi: abonelikBitisTarihiEl.value
+			abonelik_bitis_tarihi: abonelikBitisTarihiEl.value,
+			fatura_kesildi: faturaKesildiEl ? faturaKesildiEl.value : '0',
+			fatura_dosyasi_index: rowIndex // Dosya yükleme için index
 		};
 		
 		console.log('Stok data prepared:', {
 			original_birim_fiyat: birimFiyatEl.value,
 			parsed_birim_fiyat: stokData.birim_fiyat,
-			miktar: stokData.miktar
+			miktar: stokData.miktar,
+			fatura_kesildi: stokData.fatura_kesildi,
+			fatura_dosyasi: faturaDosyasiEl ? faturaDosyasiEl.files.length : 0
 		});
 		
 		if (stokData.stok_id && stokData.miktar && stokData.birim_fiyat) {
@@ -3278,18 +3396,34 @@ $('#stokBilgisiKaydetBtn').click(function() {
 		return;
 	}
 	
+	// FormData oluştur (dosya yükleme için gerekli)
+	const ajaxFormData = new FormData();
+	ajaxFormData.append('satis_id', satisId);
+	ajaxFormData.append('cari_id', cariId);
+	ajaxFormData.append('stok_bilgileri', JSON.stringify(formData));
+	ajaxFormData.append('sozlesme_tarihi', sozlesmeTarihi);
+	ajaxFormData.append('sozlesme_no', sozlesmeNo);
+	ajaxFormData.append('sozlesme_aciklama', sozlesmeAciklama);
+	
+	// Fatura dosyalarını ekle
+	document.querySelectorAll('#stokTableBody tr').forEach(function(row, rowIndex) {
+		if (row.classList.contains('toplam-satir')) {
+			return;
+		}
+		
+		const faturaDosyasiEl = row.querySelector('.faturaDosyasi');
+		if (faturaDosyasiEl && faturaDosyasiEl.files.length > 0) {
+			ajaxFormData.append('fatura_dosyasi_' + rowIndex, faturaDosyasiEl.files[0]);
+		}
+	});
+	
 	// AJAX ile kaydet
 	$.ajax({
 		url: '<?= base_url("stok_kaydet_endpoint.php") ?>',
 		method: 'POST',
-		data: {
-			satis_id: satisId,
-			cari_id: cariId,
-			stok_bilgileri: formData,
-			sozlesme_tarihi: sozlesmeTarihi,
-			sozlesme_no: sozlesmeNo,
-			sozlesme_aciklama: sozlesmeAciklama
-		},
+		data: ajaxFormData,
+		processData: false,
+		contentType: false,
 		dataType: 'json',
 		beforeSend: function() {
 			$('#stokBilgisiKaydetBtn').prop('disabled', true).html('<i class="fa fa-spinner fa-spin mr-1"></i>Kaydediliyor...');
@@ -5100,9 +5234,17 @@ $(document).ready(function() {
 		const checkbox = $(this);
 		const tahsilatId = checkbox.data('tahsilat-id');
 		const isChecked = checkbox.is(':checked');
+		const onayDurumu = checkbox.data('onay-durumu');
 		
 		if (!tahsilatId) {
 			console.warn('Tahsilat ID bulunamadı');
+			return;
+		}
+		
+		// Yetki kontrolü - onaylı bir kaydı değiştirmeye çalışıyorsa ve yetkili değilse
+		if (onayDurumu == 1 && kullaniciGrupId !== 1 && kullaniciGrupId !== 2) {
+			checkbox.prop('checked', !isChecked);
+			toastr.error('Onaylanmış tahsilatları sadece yetkili kullanıcılar değiştirebilir');
 			return;
 		}
 		
@@ -5119,6 +5261,9 @@ $(document).ready(function() {
 				if (response.success) {
 					// Başarılı mesaj göster
 					toastr.success('Onay durumu güncellendi');
+					
+					// Onay durumunu güncelle
+					checkbox.data('onay-durumu', isChecked ? 1 : 0);
 					
 					// Tümünü onayla checkbox durumunu kontrol et
 					updateTumunuOnaylaCheckbox();
@@ -5140,14 +5285,25 @@ $(document).ready(function() {
 	// Tümünü Onayla checkbox event'i
 	$(document).on('change', '#tumunuOnaylaCheckbox', function() {
 		const isChecked = $(this).is(':checked');
-		const tahsilatCheckboxes = $('.tahsilat-onay-checkbox');
+		const tahsilatCheckboxes = $('.tahsilat-onay-checkbox:not(:disabled)'); // Sadece aktif checkbox'ları seç
+		
+		// Kullanıcı yetkisi kontrolü
+		if (kullaniciGrupId !== 1 && kullaniciGrupId !== 2) {
+			// Yetkili değilse sadece onaylanmamış olanları değiştirebilir
+			const onayliVarMi = $('.tahsilat-onay-checkbox[data-onay-durumu="1"]').length > 0;
+			if (onayliVarMi && isChecked) {
+				toastr.error('Onaylanmış tahsilatları değiştirme yetkiniz yok');
+				$(this).prop('checked', false);
+				return;
+			}
+		}
 		
 		// Tüm tahsilat checkbox'larını aynı duruma getir
 		tahsilatCheckboxes.each(function() {
 			const checkbox = $(this);
 			const tahsilatId = checkbox.data('tahsilat-id');
 			
-			if (tahsilatId && checkbox.is(':checked') !== isChecked) {
+			if (tahsilatId && checkbox.is(':checked') !== isChecked && !checkbox.is(':disabled')) {
 				// Checkbox durumunu değiştir
 				checkbox.prop('checked', isChecked);
 				
@@ -5183,11 +5339,11 @@ $(document).ready(function() {
 
 // Tümünü onayla checkbox durumunu güncelle
 function updateTumunuOnaylaCheckbox() {
-	const tahsilatCheckboxes = $('.tahsilat-onay-checkbox');
+	const tahsilatCheckboxes = $('.tahsilat-onay-checkbox:visible:not(:disabled)'); // Görünür ve aktif olanları seç
 	const tumunuOnaylaCheckbox = $('#tumunuOnaylaCheckbox');
 	
 	if (tahsilatCheckboxes.length === 0) {
-		// Hiç tahsilat yoksa tümünü onayla checkbox'ını gizle
+		// Hiç tahsilat yoksa veya hepsi gizli/disabled ise tümünü onayla checkbox'ını gizle
 		tumunuOnaylaCheckbox.prop('checked', false).prop('disabled', true);
 		return;
 	}
@@ -5201,6 +5357,16 @@ function updateTumunuOnaylaCheckbox() {
 		tumunuOnaylaCheckbox.prop('checked', true);
 	} else {
 		tumunuOnaylaCheckbox.prop('checked', false);
+	}
+	
+	// Kullanıcı yetkisi kontrolü - yetkili değilse ve onaylı kayıtlar varsa disable et
+	if (kullaniciGrupId !== 1 && kullaniciGrupId !== 2) {
+		const onayliVarMi = $('.tahsilat-onay-checkbox[data-onay-durumu="1"]').length > 0;
+		if (onayliVarMi) {
+			tumunuOnaylaCheckbox.prop('disabled', true);
+			tumunuOnaylaCheckbox.closest('td').append('<br><small class="text-muted">Onaylı kayıtlar nedeniyle devre dışı</small>');
+			return;
+		}
 	}
 	
 	// Checkbox'ı aktif et
