@@ -976,7 +976,9 @@ $(document).ready(function() {
 
                 return {
 
-                    q: params.term // search term
+                    q: params.term, // search term
+
+                    stok_grup_id: 4 // S SPORT için stok grup ID
 
                 };
 

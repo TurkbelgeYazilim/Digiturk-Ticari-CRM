@@ -45,6 +45,17 @@ $modulGibSorgula = modulSorgula($firma_ID, 2);
 $modulGibProSorgula = modulSorgula($firma_ID, 3);
 $modulOcrSorgula = modulSorgula($firma_ID, 4);
 $irsaliyeModulSorgulama = modulSorgula($firma_ID, 5);
+
+// İllegal Statüleri çek (sidebar menüsü için)
+$illegal_statuler = [];
+if (grup_modul_yetkisi_var(1600)) { // İllegal modülüne erişim varsa
+    $this->db->select('illegal_statu_id, illegal_statu_adi');
+    $this->db->from('illegal_statu');
+    $this->db->where('illegal_statu_durum', 1);
+    $this->db->order_by('illegal_statu_sira_no', 'ASC');
+    $this->db->order_by('illegal_statu_id', 'ASC');
+    $illegal_statuler = $this->db->get()->result();
+}
 ?>
 <div class="sidebar" id="sidebar">
 	<div class="sidebar-inner slimscroll">
@@ -218,7 +229,7 @@ $irsaliyeModulSorgulama = modulSorgula($firma_ID, 5);
 					<li class="submenu <?php if($uri=='tahsilat') echo 'active'; ?>">
 						<a href="#"><i data-feather="dollar-sign"></i> <span>Tahsilat</span> <span class="menu-arrow"></span></a>
 						<ul>
-							<?php if (grup_modul_yetkisi_var(500)): ?>
+							<?php if (grup_modul_yetkisi_var(510)): ?>
 							<li><a href="<?= base_url('tahsilat/tahsilat-olustur'); ?>" class="<?php if($uri=='tahsilat' && $uri2=='tahsilat-olustur') echo 'active'; ?>">Tahsilat Oluştur</a></li>
 							<?php endif; ?>
 							<?php if (grup_modul_yetkisi_var(511)): ?>
@@ -257,9 +268,29 @@ $irsaliyeModulSorgulama = modulSorgula($firma_ID, 5);
 							<?php if (grup_modul_yetkisi_var(1620)): ?>
 							<li><a href="<?= base_url('illegal/illegal-listele'); ?>" class="<?php if($uri=='illegal' && $uri2=='illegal-listele') echo 'active'; ?>">İllegal Listesi</a></li>
 							<?php endif; ?>
-							<?php if (grup_modul_yetkisi_var(1630)): ?>
-							<li><a href="<?= base_url('illegal/illegal-ayar'); ?>" class="<?php if($uri=='illegal' && $uri2=='illegal-ayar') echo 'active'; ?>">İllegal Ayarları</a></li>
-							<?php endif; ?>
+						<?php if (grup_modul_yetkisi_var(1625)): ?>
+						<li><a href="<?= base_url('illegal/illegal-islemler'); ?>" class="<?php if($uri=='illegal' && $uri2=='illegal-islemler') echo 'active'; ?>">İllegal İşlemler</a></li>
+						
+						<!-- İllegal Statüleri Dinamik Menü -->
+						<?php if (!empty($illegal_statuler)): ?>
+							<?php foreach ($illegal_statuler as $statu): ?>
+								<?php 
+									$statu_link = 'illegal/illegal-islemler?statu=' . $statu->illegal_statu_id;
+									$is_active = ($uri=='illegal' && $uri2=='illegal-islemler' && $this->input->get('statu') == $statu->illegal_statu_id) ? 'active' : '';
+								?>
+								<li class="ml-3">
+									<a href="<?= base_url($statu_link); ?>" class="<?= $is_active; ?>">
+										<i data-feather="chevron-right" style="width:14px;height:14px;"></i> 
+										<?= htmlspecialchars($statu->illegal_statu_adi); ?>
+									</a>
+								</li>
+							<?php endforeach; ?>
+						<?php endif; ?>
+						
+						<?php endif; ?>
+						<?php if (grup_modul_yetkisi_var(1630)): ?>
+						<li><a href="<?= base_url('illegal/illegal-ayar'); ?>" class="<?php if($uri=='illegal' && $uri2=='illegal-ayar') echo 'active'; ?>">İllegal Ayarları</a></li>
+						<?php endif; ?>
 						</ul>
 					</li>
 					<?php endif; ?>
@@ -435,6 +466,12 @@ $irsaliyeModulSorgulama = modulSorgula($firma_ID, 5);
 						<a href="#"><i data-feather="pie-chart"></i> <span>Raporlar</span> <span class="menu-arrow"></span></a>
 						<ul>
 							<li><a href="<?= base_url('raporlar'); ?>" class="<?php if($uri=='raporlar' && $uri2=='') echo 'active'; ?>">Ana Raporlar</a></li>
+						<?php if (grup_modul_yetkisi_var(999)): ?>
+						<li><a href="<?= base_url('raporlar/detayli_muhasebe_raporu'); ?>" class="<?php if($uri=='raporlar' && $uri2=='detayli_muhasebe_raporu') echo 'active'; ?>">Detaylı Muhasebe Raporu</a></li>
+						<li><a href="<?= base_url('raporlar/konum_satis_raporu'); ?>" class="<?php if($uri=='raporlar' && $uri2=='konum_satis_raporu') echo 'active'; ?>">Konum Satış Raporu</a></li>
+						<li><a href="<?= base_url('raporlar/personel_satis_raporu'); ?>" class="<?php if($uri=='raporlar' && $uri2=='personel_satis_raporu') echo 'active'; ?>">Personel Satış Raporu</a></li>
+						<li><a href="<?= base_url('raporlar/personel_tahsilat_raporu'); ?>" class="<?php if($uri=='raporlar' && $uri2=='personel_tahsilat_raporu') echo 'active'; ?>">Personel Tahsilat Raporu</a></li>
+						<?php endif; ?>
 							<?php if (grup_modul_yetkisi_var(1401)): ?>
 							<li><a href="<?= base_url('raporlar/digiturk-personel-ciro-adet'); ?>" class="<?php if($uri=='raporlar' && $uri2=='digiturk-personel-ciro-adet') echo 'active'; ?>">Digiturk Personel Ciro/Adet</a></li>
 							<?php endif; ?>
@@ -450,10 +487,10 @@ $irsaliyeModulSorgulama = modulSorgula($firma_ID, 5);
 					
 					<!-- Muhasebe Bölümü -->
 					<?php 
-					$show_muhasebe = grup_modul_yetkisi_var(520) || grup_modul_yetkisi_var(521) || grup_modul_yetkisi_var(522) || grup_modul_yetkisi_var(523) || grup_modul_yetkisi_var(530) || grup_modul_yetkisi_var(531);
+					$show_muhasebe = grup_modul_yetkisi_var(520) || grup_modul_yetkisi_var(521) || grup_modul_yetkisi_var(522) || grup_modul_yetkisi_var(523) || grup_modul_yetkisi_var(530) || grup_modul_yetkisi_var(531) || grup_modul_yetkisi_var(540);
 					// DEBUG for user 187
 					if($control2 && $control2->kullanici_id == 187) {
-						echo "<!-- MUHASEBE DEBUG: Show=$show_muhasebe, 520=" . (grup_modul_yetkisi_var(520) ? 'TRUE' : 'FALSE') . ", 521=" . (grup_modul_yetkisi_var(521) ? 'TRUE' : 'FALSE') . ", 522=" . (grup_modul_yetkisi_var(522) ? 'TRUE' : 'FALSE') . ", 523=" . (grup_modul_yetkisi_var(523) ? 'TRUE' : 'FALSE') . ", 530=" . (grup_modul_yetkisi_var(530) ? 'TRUE' : 'FALSE') . ", 531=" . (grup_modul_yetkisi_var(531) ? 'TRUE' : 'FALSE') . " -->";
+						echo "<!-- MUHASEBE DEBUG: Show=$show_muhasebe, 520=" . (grup_modul_yetkisi_var(520) ? 'TRUE' : 'FALSE') . ", 521=" . (grup_modul_yetkisi_var(521) ? 'TRUE' : 'FALSE') . ", 522=" . (grup_modul_yetkisi_var(522) ? 'TRUE' : 'FALSE') . ", 523=" . (grup_modul_yetkisi_var(523) ? 'TRUE' : 'FALSE') . ", 530=" . (grup_modul_yetkisi_var(530) ? 'TRUE' : 'FALSE') . ", 531=" . (grup_modul_yetkisi_var(531) ? 'TRUE' : 'FALSE') . ", 540=" . (grup_modul_yetkisi_var(540) ? 'TRUE' : 'FALSE') . " -->";
 					}
 					if($show_muhasebe): ?>
 					<li class="submenu <?php if($uri=='muhasebe' || ($uri=='senet' && in_array($uri2, ['detay', 'senet-duzenle']))) echo 'active'; ?>">
@@ -462,9 +499,12 @@ $irsaliyeModulSorgulama = modulSorgula($firma_ID, 5);
 							<?php if(grup_modul_yetkisi_var(520)): ?>
 							<li><a href="<?= base_url('muhasebe/tahsilat-listesi'); ?>" class="<?php if($uri=='muhasebe' && $uri2=='tahsilat-listesi') echo 'active'; ?>">Tahsilat Listesi</a></li>
 							<?php endif; ?>
-							<?php if(grup_modul_yetkisi_var(521)): ?>
-							<li><a href="<?= base_url('muhasebe/onay-bekleyen-tahsilatlar'); ?>" class="<?php if($uri=='muhasebe' && $uri2=='onay-bekleyen-tahsilatlar') echo 'active'; ?>">Onay Bekleyen Tahsilatlar</a></li>
-							<?php endif; ?>
+						<?php if(grup_modul_yetkisi_var(521)): ?>
+						<li><a href="<?= base_url('muhasebe/tahsilat-listesi?durum=1'); ?>" class="<?php if($uri=='muhasebe' && $uri2=='tahsilat-listesi' && $this->input->get('durum')=='1' && !$this->input->get('tahsilat_tipi')) echo 'active'; ?>">Ödeme Beklenen Tüm Tahsilatlar</a></li>
+						<?php endif; ?>
+						<?php if(grup_modul_yetkisi_var(521)): ?>
+						<li><a href="<?= base_url('muhasebe/tahsilat-listesi?tahsilat_tipi[]=2&tahsilat_tipi[]=4&durum=1'); ?>" class="<?php if($uri=='muhasebe' && $uri2=='tahsilat-listesi' && $this->input->get('tahsilat_tipi') && in_array('2', $this->input->get('tahsilat_tipi')) && in_array('4', $this->input->get('tahsilat_tipi'))) echo 'active'; ?>">Çek ve Senet Ödeme Beklenen Tahsilatlar</a></li>
+						<?php endif; ?>
 							<?php if(grup_modul_yetkisi_var(530)): ?>
 							<li><a href="<?= base_url('muhasebe/musteri-listesi'); ?>" class="<?php if($uri=='muhasebe' && $uri2=='musteri-listesi') echo 'active'; ?>">Müşteri Listesi</a></li>
 							<?php endif; ?>
@@ -482,6 +522,10 @@ $irsaliyeModulSorgulama = modulSorgula($firma_ID, 5);
 							
 							<?php if(grup_modul_yetkisi_var(531)): ?>
 							<li><a href="<?= base_url('muhasebe/tam-ana-rapor'); ?>" class="<?php if($uri=='muhasebe' && $uri2=='tam-ana-rapor') echo 'active'; ?>">Tam Ana Rapor</a></li>
+							<?php endif; ?>
+							
+							<?php if(grup_modul_yetkisi_var(540)): ?>
+							<li><a href="<?= base_url('muhasebe/smsYonetimi'); ?>" class="<?php if($uri=='muhasebe' && $uri2=='smsYonetimi') echo 'active'; ?>">📱 SMS Yönetimi</a></li>
 							<?php endif; ?>
 						</ul>
 					</li>

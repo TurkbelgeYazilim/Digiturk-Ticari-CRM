@@ -128,9 +128,9 @@ class Aktivasyon extends CI_Controller
 
         
 
-        // Cari listesi - Ana hesap kısıtlaması kaldırıldı
+        // Cari listesi - stokGrup_id 1 ve 279 olan müşteriler (Digiturk)
 
-        $cariQuery = "SELECT c.cari_id, c.cari_ad, c.cari_firmaTelefon, 
+        $cariQuery = "SELECT DISTINCT c.cari_id, c.cari_ad, c.cari_firmaTelefon, 
 
                              i.il as il_adi, ilce.ilce as ilce_adi
 
@@ -140,7 +140,17 @@ class Aktivasyon extends CI_Controller
 
                       LEFT JOIN ilceler ilce ON c.cari_ilce = ilce.id
 
+                      JOIN satisfaturasi sf ON sf.satis_cariID = c.cari_id
+
+                      JOIN satisfaturasistok sfs ON sfs.satisStok_satisFaturasiID = sf.satis_id
+
+                      JOIN stok s ON s.stok_id = sfs.satisStok_stokID
+
+                      JOIN stokgruplari sg ON sg.stokGrup_id = s.stok_stokGrupKoduID
+
                       WHERE c.cari_durum = 1 
+
+                      AND sg.stokGrup_id IN (1, 279)
 
                       ORDER BY c.cari_ad ASC";
 
@@ -656,9 +666,67 @@ class Aktivasyon extends CI_Controller
 
             $term = $this->input->get('q');
 
+            $stok_grup_id = $this->input->get('stok_grup_id');
+
             
 
-            $query = "SELECT c.cari_id, c.cari_ad, c.cari_firmaTelefon, 
+            // Varsayılan: Digiturk (1)
+
+            if (empty($stok_grup_id)) {
+
+                $stok_grup_id = '1';
+
+            }
+
+            
+
+            // Virgülle ayrılmış değerleri diziye çevir
+
+            $stokGrupList = array();
+
+            if (strpos($stok_grup_id, ',') !== false) {
+
+                $parts = explode(',', $stok_grup_id);
+
+                foreach ($parts as $p) {
+
+                    $p = trim($p);
+
+                    if ($p !== '' && is_numeric($p)) {
+
+                        $stokGrupList[] = (int)$p;
+
+                    }
+
+                }
+
+            } else {
+
+                if (is_numeric($stok_grup_id)) {
+
+                    $stokGrupList[] = (int)$stok_grup_id;
+
+                }
+
+            }
+
+            
+
+            if (empty($stokGrupList)) {
+
+                $stokGrupList = array(1);
+
+            }
+
+            
+
+            // IN için placeholder oluştur
+
+            $placeholders = implode(',', array_fill(0, count($stokGrupList), '?'));
+
+            
+
+            $query = "SELECT DISTINCT c.cari_id, c.cari_ad, c.cari_firmaTelefon, 
 
                              i.il as il_adi, ilce.ilce as ilce_adi
 
@@ -668,7 +736,17 @@ class Aktivasyon extends CI_Controller
 
                       LEFT JOIN ilceler ilce ON c.cari_ilce = ilce.id
 
+                      JOIN satisfaturasi sf ON sf.satis_cariID = c.cari_id
+
+                      JOIN satisfaturasistok sfs ON sfs.satisStok_satisFaturasiID = sf.satis_id
+
+                      JOIN stok s ON s.stok_id = sfs.satisStok_stokID
+
+                      JOIN stokgruplari sg ON sg.stokGrup_id = s.stok_stokGrupKoduID
+
                       WHERE c.cari_durum = 1 
+
+                      AND sg.stokGrup_id IN ($placeholders)
 
                       AND c.cari_ad LIKE ? 
 
@@ -678,7 +756,15 @@ class Aktivasyon extends CI_Controller
 
             
 
-            $result = $this->db->query($query, array("%$term%"))->result();
+            // Parametreleri birleştir
+
+            $params = $stokGrupList;
+
+            $params[] = "%$term%";
+
+            
+
+            $result = $this->db->query($query, $params)->result();
 
             
 

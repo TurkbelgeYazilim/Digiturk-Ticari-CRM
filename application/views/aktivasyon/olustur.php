@@ -732,7 +732,9 @@ $(document).ready(function() {
 
                 return {
 
-                    q: params.term // search term
+                    q: params.term, // search term
+
+                    stok_grup_id: '1,279' // Digiturk için birden fazla stok grup desteği (1 ve 279)
 
                 };
 

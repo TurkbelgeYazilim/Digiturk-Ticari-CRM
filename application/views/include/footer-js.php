@@ -30,18 +30,15 @@ $son_destek_id = $row['son_destek_id'] ?? 'Bilinmiyor';
 
 
 
-$mysqli->close();
-
-// Changelog'u oku
-$changelog_path = APPPATH . 'config/changelog.json';
-$app_version = '2.4.9'; // Varsayılan versiyon
-if (file_exists($changelog_path)) {
-    $changelog_content = file_get_contents($changelog_path);
-    $changelog_data = json_decode($changelog_content, true);
-    if ($changelog_data && isset($changelog_data['app_version'])) {
-        $app_version = $changelog_data['app_version'];
-    }
+// En son versiyon numarasını al (veritabanından)
+$version_result = $mysqli->query("SELECT changelog_version FROM changelog ORDER BY changelog_id DESC LIMIT 1");
+$app_version = '1.0.0'; // Varsayılan versiyon
+if ($version_result && $version_result->num_rows > 0) {
+    $version_row = $version_result->fetch_assoc();
+    $app_version = $version_row['changelog_version'];
 }
+
+$mysqli->close();
 ?>
 
 <div class="footer">
@@ -669,47 +666,96 @@ let changelogData = null;
 let currentPage = 1;
 const itemsPerPage = 10;
 
+// DOM hazır olduğunda modal kontrolü yap
+$(document).ready(function() {
+    console.log('DOM hazır');
+    console.log('changelogModal var mı?', $('#changelogModal').length);
+    console.log('Bootstrap modal fonksiyonu var mı?', typeof $.fn.modal);
+});
+
+// Debug fonksiyonu
+function debugModal() {
+    console.log('=== MODAL DEBUG ===');
+    console.log('changelogModal elementi:', $('#changelogModal')[0]);
+    console.log('Modal uzunluğu:', $('#changelogModal').length);
+    console.log('Bootstrap yüklenmiş mi?', typeof $.fn.modal);
+    console.log('jQuery versiyonu:', $.fn.jquery);
+    
+    if ($('#changelogModal').length > 0) {
+        try {
+            $('#changelogModal').modal('show');
+            console.log('Modal açma denemesi başarılı');
+        } catch (e) {
+            console.error('Modal açma hatası:', e);
+        }
+    } else {
+        console.error('Modal elementi bulunamadı!');
+    }
+}
+
 // Changelog modal'ını göster
 function showChangelog() {
-    $('#changelogModal').modal('show');
-    $('#changelogLoading').show();
-    $('#changelogContent').hide();
+    console.log('showChangelog() çağrıldı');
     
-    // AJAX ile changelog verilerini getir
-    $.ajax({
-        url: '<?= base_url("home/getChangelog") ?>',
-        method: 'GET',
-        dataType: 'json',
-        success: function(response) {
-            $('#changelogLoading').hide();
-            $('#changelogContent').show();
-            
-            if (response.success && response.data) {
-                changelogData = response.data;
-                currentPage = 1;
-                renderChangelog(changelogData);
-            } else {
-                $('#changelogContent').html(`
-                    <div class="alert alert-warning text-center">
-                        <i class="fa fa-exclamation-triangle fa-2x mb-2"></i>
-                        <h5>Versiyon bilgileri yüklenemedi</h5>
-                        <p>Lütfen daha sonra tekrar deneyin.</p>
+    try {
+        $('#changelogModal').modal('show');
+        console.log('Modal show komutu gönderildi');
+        $('#changelogLoading').show();
+        $('#changelogContent').hide();
+        
+        // AJAX ile changelog verilerini getir
+        $.ajax({
+            url: '<?= base_url("home/getChangelog") ?>',
+            method: 'GET',
+            dataType: 'json',
+            timeout: 10000,
+            cache: false,
+            success: function(response) {
+                console.log('AJAX başarılı:', response);
+                console.log('Response type:', typeof response);
+                console.log('Response.success:', response.success);
+                console.log('Response.data:', response.data);
+                
+                $('#changelogLoading').hide();
+                $('#changelogContent').show();
+                
+                if (response.success && response.data) {
+                    changelogData = response.data;
+                    currentPage = 1;
+                    renderChangelog(changelogData);
+                } else {
+                    $('#changelogContent').html(`
+                        <div class="alert alert-warning text-center">
+                            <i class="fa fa-exclamation-triangle fa-2x mb-2"></i>
+                            <h5>Versiyon bilgileri yüklenemedi</h5>
+                            <p>${response.message || 'Lütfen daha sonra tekrar deneyin.'}</p>
+                            ${response.error ? '<small>Detay: ' + response.error + '</small>' : ''}
+                        </div>
+                    `);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX hatası detayları:');
+                console.error('- Status:', status);
+                console.error('- Error:', error);
+                console.error('- XHR Status:', xhr.status);
+                console.error('- XHR Response:', xhr.responseText);
+                
+                $('#changelogLoading').hide();
+                $('#changelogContent').show().html(`
+                    <div class="alert alert-danger text-center">
+                        <i class="fa fa-exclamation-circle fa-2x mb-2"></i>
+                        <h5>Hata Oluştu</h5>
+                        <p>Versiyon bilgileri yüklenirken bir hata oluştu.</p>
+                        <small>Status: ${status}<br>Hata: ${error}</small>
                     </div>
                 `);
             }
-        },
-        error: function(xhr, status, error) {
-            $('#changelogLoading').hide();
-            $('#changelogContent').show().html(`
-                <div class="alert alert-danger text-center">
-                    <i class="fa fa-exclamation-circle fa-2x mb-2"></i>
-                    <h5>Hata Oluştu</h5>
-                    <p>Versiyon bilgileri yüklenirken bir hata oluştu.</p>
-                    <small>Hata: ${error}</small>
-                </div>
-            `);
-        }
-    });
+        });
+    } catch (e) {
+        console.error('showChangelog hatası:', e);
+        alert('Modal açılırken hata oluştu: ' + e.message);
+    }
 }
 
 // Changelog'u render et
@@ -762,7 +808,7 @@ function renderChangelog(data) {
                         <h6 class="mb-0">
                             <i class="fa fa-chevron-right mr-2 version-toggle-icon" id="icon-${versionId}"></i>
                             <i class="fa fa-tag mr-2"></i>
-                            v${version.version} - ${version.title}
+                            v${version.version}
                             ${isLatest ? '<span class="badge badge-light text-primary ml-2">Güncel</span>' : ''}
                         </h6>
                         <small>${formatDate(version.date)}</small>
@@ -770,57 +816,51 @@ function renderChangelog(data) {
                 </div>
                 <div class="collapse" id="${versionId}">
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-8">
-                                <h6>Değişiklikler:</h6>
-                                <ul class="list-unstyled">
+                        <h6>Değişiklikler:</h6>
+                        <ul class="list-unstyled">
         `;
         
         if (version.changes && version.changes.length > 0) {
             version.changes.forEach(function(change) {
-                const changeType = data.change_types[change.type] || {
-                    label: change.type,
-                    icon: 'fa-circle',
-                    color: 'secondary'
-                };
+                // Tip bazlı renk ve ikon belirleme
+                let badgeColor = 'secondary';
+                let badgeIcon = 'fa-circle';
+                let badgeLabel = change.type;
+                
+                if (change.type === 'feature') {
+                    badgeColor = 'success';
+                    badgeIcon = 'fa-plus-circle';
+                    badgeLabel = 'Özellik';
+                } else if (change.type === 'bugfix') {
+                    badgeColor = 'danger';
+                    badgeIcon = 'fa-bug';
+                    badgeLabel = 'Hata Düzeltme';
+                } else if (change.type === 'improvement') {
+                    badgeColor = 'info';
+                    badgeIcon = 'fa-arrow-up';
+                    badgeLabel = 'İyileştirme';
+                }
                 
                 html += `
-                    <li class="mb-2">
-                        <span class="badge badge-${changeType.color} mr-2">
-                            <i class="fa ${changeType.icon} mr-1"></i>
-                            ${changeType.label}
-                        </span>
-                        <strong>${change.description}</strong>
-                        ${change.details ? `<br><small class="text-muted ml-4">${change.details}</small>` : ''}
+                    <li class="mb-3">
+                        <div>
+                            <span class="badge badge-${badgeColor} mr-2">
+                                <i class="fa ${badgeIcon} mr-1"></i>
+                                ${badgeLabel}
+                            </span>
+                            ${change.module ? `<strong>${change.module}</strong>` : ''}
+                        </div>
+                        ${change.description ? `<div class="mt-1">${change.description}</div>` : ''}
+                        ${change.details ? `<div class="text-muted small mt-1">${change.details}</div>` : ''}
+                        ${change.file ? `<div class="text-muted small mt-1"><code>${change.file}</code></div>` : ''}
+                        ${change.author ? `<div class="text-muted small mt-1"><i class="fa fa-user"></i> ${change.author}</div>` : ''}
                     </li>
                 `;
             });
         }
         
         html += `
-                                </ul>
-                            </div>
-                            <div class="col-md-4">
-                                <h6>Teknik Bilgiler:</h6>
-                                <ul class="list-unstyled small">
-                                    <li><strong>Değiştirilen Dosyalar:</strong> ${version.files_modified.length}</li>
-                                    <li><strong>Veritabanı Değişikliği:</strong> ${version.db_changes ? 'Evet' : 'Hayır'}</li>
-                                </ul>
-                                ${version.files_modified.length > 0 ? `
-                                    <button class="btn btn-sm btn-outline-info" type="button" data-toggle="collapse" 
-                                            data-target="#files-${version.version.replace(/\./g, '-')}" aria-expanded="false">
-                                        <i class="fa fa-file-code"></i> Dosyaları Göster
-                                    </button>
-                                    <div class="collapse mt-2" id="files-${version.version.replace(/\./g, '-')}">
-                                        <div class="card card-body p-2">
-                                            <ul class="list-unstyled mb-0 small">
-                                                ${version.files_modified.map(file => `<li><code>${file}</code></li>`).join('')}
-                                            </ul>
-                                        </div>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </div>
+                        </ul>
                     </div>
                 </div>
             </div>
