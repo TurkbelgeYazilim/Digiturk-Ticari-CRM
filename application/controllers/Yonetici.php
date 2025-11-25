@@ -131,25 +131,12 @@ class Yonetici extends CI_Controller {
 		$tumKullanicilarQ = "SELECT kullanici_id, kullanici_ad, kullanici_soyad FROM kullanicilar WHERE kullanici_sorumluMudur = '$anaHesap' AND kullanici_durum = 1 ORDER BY kullanici_ad ASC, kullanici_soyad ASC";
 		$data["tumKullanicilar"] = $this->db->query($tumKullanicilarQ)->result();
 		
-		// İlleri getir		
-		$illerQ = "SELECT * FROM iller ORDER BY il ASC";
-		$data["iller"] = $this->db->query($illerQ)->result();
+		// Ülkeleri getir
+		$ulkelerQ = "SELECT id, ulke_adi FROM ulkeler ORDER BY ulke_adi ASC";
+		$data["ulkeler"] = $this->db->query($ulkelerQ)->result();
 		
-		// Ülkeleri getir - Eğer tablo yoksa boş array ata
-		$data["ulkeler"] = [];
-		
-		// Tablo varlığını kontrol et
-		if ($this->db->table_exists('ulkeler')) {
-			try {
-				$ulkelerQ = "SELECT ulke_kodu as country_code, ulke_adi as country_name FROM ulkeler ORDER BY ulke_adi ASC";
-				$data["ulkeler"] = $this->db->query($ulkelerQ)->result();
-			} catch (Exception $e) {
-				// Hata durumunda boş array bırak
-				$data["ulkeler"] = [];
-			}
-		}
 				//logekle(48,1);
-		$this->load->view("yonetici/kullanici", $data);
+		$this->load->view("yonetici/yeni-kullanici-ekle", $data);
 	}
 	public function kullaniciOlustur(){
 
@@ -179,10 +166,17 @@ class Yonetici extends CI_Controller {
 		
 		if($sifre == $sifreTekrar){			$data["kullanici_eposta"] = $eposta;			$data["kullanici_ad"] = postval("kullanici_ad");
 			$data["kullanici_soyad"] = postval("kullanici_soyad");
-			$data["kullanici_kullaniciAdi"] = postval("kullanici_kullaniciAdi");
 			$data["kullanici_sifre"] = md5($sifre);
 			$data["grup_id"] = postval("kullanici_grupID"); // Form field adı kullanici_grupID ama database field grup_id
 			$data["kullanici_durum"] = postval("kullanici_durum");
+			
+			// Ülke yetkilerini al ve virgülle ayrılmış string olarak kaydet
+			$ulke_yetkisi = $this->input->post("kullanici_ulke");
+			if(!empty($ulke_yetkisi) && is_array($ulke_yetkisi)) {
+				$data["kullanici_ulke"] = implode(',', $ulke_yetkisi);
+			} else {
+				$data["kullanici_ulke"] = null;
+			}
 			
 			// Sorumlu müdür alanı - eğer seçilmişse kullan, yoksa mevcut ana hesabı kullan			$sorumluMudur = postval("kullanici_sorumluMudur");
 			$data["kullanici_sorumluMudur"] = !empty($sorumluMudur) ? $sorumluMudur : $anaHesap;
@@ -294,44 +288,14 @@ class Yonetici extends CI_Controller {
 		$tumKullanicilarQ = "SELECT kullanici_id, kullanici_ad, kullanici_soyad FROM kullanicilar WHERE kullanici_durum = 1 ORDER BY kullanici_ad ASC, kullanici_soyad ASC";
 		$data["tumKullanicilar"] = $this->db->query($tumKullanicilarQ)->result();
 		
-		// İlleri getir
-		$illerQ = "SELECT * FROM iller ORDER BY il ASC";		$data["iller"] = $this->db->query($illerQ)->result();
-				// Ülkeleri getir (updated to use correct field name from database schema)
-		$ulkelerQ = "SELECT ulke_kodu as country_code, ulke_adi as country_name FROM ulkeler ORDER BY ulke_adi ASC";
+		// Ülkeleri getir
+		$ulkelerQ = "SELECT id, ulke_adi FROM ulkeler ORDER BY ulke_adi ASC";
 		$data["ulkeler"] = $this->db->query($ulkelerQ)->result();
 		
-		// Kullanıcının mevcut sorumluluk bölgelerini getir
-		$kullaniciSorumlulukQ = "SELECT sb.*, i.il, ilc.ilce, 
-								 CONCAT(k.kullanici_ad, ' ', LEFT(k.kullanici_soyad, 1), '.') as islemi_yapan_adi
-								 FROM kullanici_sorumluluk_bolgesi sb
-								 LEFT JOIN iller i ON sb.il_id = i.id
-								 LEFT JOIN ilceler ilc ON sb.ilce_id = ilc.id
-								 LEFT JOIN kullanicilar k ON sb.islemi_yapan = k.kullanici_id
-								 WHERE sb.kullanici = '$id' AND sb.durum = 1";
-		$data["kullaniciSorumlulukBolgeleri"] = $this->db->query($kullaniciSorumlulukQ)->result();// Kullanıcının sorumluluk bölgesi temel bilgilerini getir (ilk kayıt varsa)
-		// Önce tablo yapısını kontrol et
-		$tableColumns = $this->db->list_fields('kullanici_sorumluluk_bolgesi');
-		$hasExtendedColumns = in_array('baslangic_tarihi', $tableColumns) && 
-							  in_array('bitis_tarihi', $tableColumns) && 
-							  in_array('ulke_id', $tableColumns) && 
-							  in_array('aciklama', $tableColumns);
-		
-		if ($hasExtendedColumns) {
-			$kullaniciSorumlulukBilgiQ = "SELECT baslangic_tarihi, bitis_tarihi, ulke_id, aciklama
-										   FROM kullanici_sorumluluk_bolgesi 
-										   WHERE kullanici = '$id' AND durum = 1 
-										   LIMIT 1";
-		} else {
-			// Eski tablo yapısı için temel sorgu
-			$kullaniciSorumlulukBilgiQ = "SELECT kullanici, durum
-										   FROM kullanici_sorumluluk_bolgesi 
-										   WHERE kullanici = '$id' AND durum = 1 
-										   LIMIT 1";
-		}		$data["kullaniciSorumlulukBilgi"] = $this->db->query($kullaniciSorumlulukBilgiQ)->row();
-		$data["hasExtendedColumns"] = $hasExtendedColumns;
+
 		
 		//logekle(48,1);
-		$this->load->view("yonetici/kullanici", $data);
+		$this->load->view("yonetici/mevcut-kullanici-duzenle", $data);
 	}
 
 	public function kullaniciDuzenle(){
@@ -355,10 +319,22 @@ class Yonetici extends CI_Controller {
 			}
 		}
 		$data["kullanici_eposta"] = $eposta;		$data["kullanici_ad"] = postval("kullanici_ad");		$data["kullanici_soyad"] = postval("kullanici_soyad");
-		$data["kullanici_kullaniciAdi"] = postval("kullanici_kullaniciAdi");
 		$data["grup_id"] = postval("kullanici_grupID"); // Form field adı kullanici_grupID ama database field grup_id
 		$data["kullanici_durum"] = postval("kullanici_durum");
-		$data["kullanici_sorumluMudur"] = postval("kullanici_sorumluMudur"); // Sorumlu müdür alanı
+		
+		// Ülke yetkilerini al ve virgülle ayrılmış string olarak kaydet
+		$ulke_yetkisi = $this->input->post("kullanici_ulke");
+		if(!empty($ulke_yetkisi) && is_array($ulke_yetkisi)) {
+			$data["kullanici_ulke"] = implode(',', $ulke_yetkisi);
+		} else {
+			$data["kullanici_ulke"] = null;
+		}
+		
+		// Sorumlu müdür alanı
+		$sorumluMudur = postval("kullanici_sorumluMudur");
+		if(!empty($sorumluMudur)) {
+			$data["kullanici_sorumluMudur"] = $sorumluMudur;
+		}
 
 		$kullaniciEpostaVarmiQ = "SELECT * FROM kullanicilar WHERE kullanici_eposta = '$eposta' AND kullanici_id != '$kullanici_id'";
 		$kullaniciEpostaVarmi = $this->db->query($kullaniciEpostaVarmiQ)->row();
@@ -490,6 +466,10 @@ class Yonetici extends CI_Controller {
 
 		$kullaniciEposta = $this->input->get('kullaniciEposta');
 		$kullaniciAdi = $this->input->get('kullaniciAdi');
+		// Yeni filtreler: grup, durum, sorumlu müdür
+		$grupID = $this->input->get('grupID');
+		$kullaniciDurum = $this->input->get('durum');
+		$sorumluMudur = $this->input->get('sorumluMudur');
 
 		$urim = $this->uri->segment(2);
 		
@@ -500,15 +480,36 @@ class Yonetici extends CI_Controller {
 		$limit = 20;
 
 		if($sayfa){$pagem = ($page-1)*$limit;}
-		else{$pagem = 0;/*logekle(50,1);*/}		if((isset($kullaniciEposta) && !empty($kullaniciEposta)) || (isset($kullaniciAdi) && !empty($kullaniciAdi))){
-			$countq = "SELECT COUNT(*) as total FROM kullanicilar WHERE kullanici_eposta LIKE '%$kullaniciEposta%' AND kullanici_kullaniciAdi LIKE '%$kullaniciAdi%'";
-			$countexe = $this->db->query($countq)->row();
-			$count = $countexe->total;			$sorgu = "SELECT k.*, kg.kg_adi, sm.kullanici_ad as sorumlu_mudur_ad, sm.kullanici_soyad as sorumlu_mudur_soyad FROM kullanicilar k LEFT JOIN kullanici_grubu kg ON k.grup_id = kg.kg_id LEFT JOIN kullanicilar sm ON k.kullanici_sorumluMudur = sm.kullanici_id WHERE k.kullanici_eposta LIKE '%$kullaniciEposta%' AND k.kullanici_kullaniciAdi LIKE '%$kullaniciAdi%' ORDER BY k.kullanici_id DESC LIMIT $pagem,$limit";		}else{
-			$countq = "SELECT COUNT(*) as total FROM kullanicilar";
-			$countexe = $this->db->query($countq)->row();
-			$count = $countexe->total;
-			$sorgu = "SELECT k.*, kg.kg_adi, sm.kullanici_ad as sorumlu_mudur_ad, sm.kullanici_soyad as sorumlu_mudur_soyad FROM kullanicilar k LEFT JOIN kullanici_grubu kg ON k.grup_id = kg.kg_id LEFT JOIN kullanicilar sm ON k.kullanici_sorumluMudur = sm.kullanici_id ORDER BY k.kullanici_id DESC LIMIT $pagem,$limit";
+		else{$pagem = 0;/*logekle(50,1);*/}
+		// Filtreleri güvenli şekilde oluştur
+		$filters = array();
+		if(!empty($kullaniciEposta)){
+			$esc = $this->db->escape('%'.$this->db->escape_like_str($kullaniciEposta).'%');
+			$filters[] = "k.kullanici_eposta LIKE " . $esc;
 		}
+		if(!empty($kullaniciAdi)){
+			$esc = $this->db->escape('%'.$this->db->escape_like_str($kullaniciAdi).'%');
+			$filters[] = "(k.kullanici_ad LIKE " . $esc . " OR k.kullanici_soyad LIKE " . $esc . ")";
+		}
+		if(!empty($grupID)){
+			$filters[] = "k.grup_id = " . intval($grupID);
+		}
+		if($kullaniciDurum !== null && $kullaniciDurum !== ''){
+			$filters[] = "k.kullanici_durum = " . intval($kullaniciDurum);
+		}
+		if(!empty($sorumluMudur)){
+			$filters[] = "k.kullanici_sorumluMudur = " . intval($sorumluMudur);
+		}
+		$where = '';
+		if(!empty($filters)){
+			$where = ' WHERE ' . implode(' AND ', $filters);
+		}
+		// COUNT sorgusu
+		$countq = "SELECT COUNT(*) as total FROM kullanicilar k" . $where;
+		$countexe = $this->db->query($countq)->row();
+		$count = $countexe->total;
+		// Asıl liste sorgusu (grup ve sorumlu için join)
+		$sorgu = "SELECT k.*, kg.kg_adi, sm.kullanici_ad as sorumlu_mudur_ad, sm.kullanici_soyad as sorumlu_mudur_soyad FROM kullanicilar k LEFT JOIN kullanici_grubu kg ON k.grup_id = kg.kg_id LEFT JOIN kullanicilar sm ON k.kullanici_sorumluMudur = sm.kullanici_id" . $where . " ORDER BY k.kullanici_id DESC LIMIT $pagem,$limit";
 
 		$data["count_of_list"] = $count;
 
@@ -556,7 +557,121 @@ class Yonetici extends CI_Controller {
 		$data["links"] = $this->pagination->create_links();
 		$data["kullanici"] = $this->db->query($sorgu)->result();
 
+		// Filtre dropdown'ları için veri
+		$data["kullaniciGruplari"] = $this->db->query("SELECT kg_id, kg_adi FROM kullanici_grubu ORDER BY kg_adi ASC")->result();
+		$data["tumKullanicilar"] = $this->db->query("SELECT kullanici_id, kullanici_ad, kullanici_soyad FROM kullanicilar WHERE kullanici_durum = 1 ORDER BY kullanici_ad, kullanici_soyad")->result();
+
 		$this->load->view("yonetici/kullanici-listesi",$data);
+	}
+
+	public function kullaniciListesiExcel(){
+		if(gibYetki()==1)
+			redirect("home/hata");
+
+		$anaHesap = anaHesapBilgisi();
+
+		// Filtreleri al
+		$kullaniciEposta = $this->input->get('kullaniciEposta');
+		$kullaniciAdi = $this->input->get('kullaniciAdi');
+		$grupID = $this->input->get('grupID');
+		$kullaniciDurum = $this->input->get('durum');
+		$sorumluMudur = $this->input->get('sorumluMudur');
+
+		// Filtreleri güvenli şekilde oluştur
+		$filters = array();
+		if(!empty($kullaniciEposta)){
+			$esc = $this->db->escape('%'.$this->db->escape_like_str($kullaniciEposta).'%');
+			$filters[] = "k.kullanici_eposta LIKE " . $esc;
+		}
+		if(!empty($kullaniciAdi)){
+			$esc = $this->db->escape('%'.$this->db->escape_like_str($kullaniciAdi).'%');
+			$filters[] = "(k.kullanici_ad LIKE " . $esc . " OR k.kullanici_soyad LIKE " . $esc . ")";
+		}
+		if(!empty($grupID)){
+			$filters[] = "k.grup_id = " . intval($grupID);
+		}
+		if($kullaniciDurum !== null && $kullaniciDurum !== ''){
+			$filters[] = "k.kullanici_durum = " . intval($kullaniciDurum);
+		}
+		if(!empty($sorumluMudur)){
+			$filters[] = "k.kullanici_sorumluMudur = " . intval($sorumluMudur);
+		}
+		
+		$where = '';
+		if(!empty($filters)){
+			$where = ' WHERE ' . implode(' AND ', $filters);
+		}
+
+		// Kullanıcı listesini çek
+		$sorgu = "SELECT k.*, kg.kg_adi, sm.kullanici_ad as sorumlu_mudur_ad, sm.kullanici_soyad as sorumlu_mudur_soyad 
+				  FROM kullanicilar k 
+				  LEFT JOIN kullanici_grubu kg ON k.grup_id = kg.kg_id 
+				  LEFT JOIN kullanicilar sm ON k.kullanici_sorumluMudur = sm.kullanici_id" 
+				  . $where . " ORDER BY k.kullanici_id DESC";
+
+		$kullanicilar = $this->db->query($sorgu)->result();
+
+		// Excel oluştur
+		$reader = PhpOffice\PhpSpreadsheet\IOFactory::createReader('Xlsx');
+		$reader->setReadDataOnly(TRUE);
+		$spreadsheet = new Spreadsheet();
+		
+		$sheet = $spreadsheet->getActiveSheet();
+
+		date_default_timezone_set('Europe/Istanbul');
+		$tarih = (new DateTime('now'))->format('d.m.Y-His');
+
+		// Başlıklar
+		$sheet->setCellValue('A1', 'ID');
+		$sheet->setCellValue('B1', 'E-POSTA');
+		$sheet->setCellValue('C1', 'AD');
+		$sheet->setCellValue('D1', 'SOYAD');
+		$sheet->setCellValue('E1', 'YETKİ GRUBU');
+		$sheet->setCellValue('F1', 'SORUMLU MÜDÜR');
+		$sheet->setCellValue('G1', 'DURUM');
+
+		$rows = 2;
+		foreach($kullanicilar as $kul){
+			$yetkiTxt = !empty($kul->kg_adi) ? $kul->kg_adi : "Grup Atanmamış";
+			$durumTxt = $kul->kullanici_durum == 1 ? 'Aktif' : 'Pasif';
+			
+			// Sorumlu müdür bilgisi
+			$sorumluMudurTxt = '';
+			if (!empty($kul->sorumlu_mudur_ad) && !empty($kul->sorumlu_mudur_soyad)) {
+				$sorumluMudurTxt = $kul->sorumlu_mudur_ad . ' ' . $kul->sorumlu_mudur_soyad;
+			} else {
+				$sorumluMudurTxt = 'Atanmamış';
+			}
+
+			$sheet->setCellValue('A'.$rows, $kul->kullanici_id);
+			$sheet->setCellValue('B'.$rows, $kul->kullanici_eposta);
+			$sheet->setCellValue('C'.$rows, $kul->kullanici_ad);
+			$sheet->setCellValue('D'.$rows, $kul->kullanici_soyad);
+			$sheet->setCellValue('E'.$rows, $yetkiTxt);
+			$sheet->setCellValue('F'.$rows, $sorumluMudurTxt);
+			$sheet->setCellValue('G'.$rows, $durumTxt);
+
+			$rows++;
+		}
+
+		// Kolonları otomatik boyutlandır
+		$sheet->getColumnDimension('A')->setAutoSize(true);
+		$sheet->getColumnDimension('B')->setAutoSize(true);
+		$sheet->getColumnDimension('C')->setAutoSize(true);
+		$sheet->getColumnDimension('D')->setAutoSize(true);
+		$sheet->getColumnDimension('E')->setAutoSize(true);
+		$sheet->getColumnDimension('F')->setAutoSize(true);
+		$sheet->getColumnDimension('G')->setAutoSize(true);
+
+		$writer = new Xlsx($spreadsheet);
+		
+		$filename = 'kullanici-listesi-'.$tarih;
+
+		header('Content-Type: application/vnd.ms-excel');
+		header('Content-Disposition: attachment;filename="'. $filename .'.xlsx"'); 
+		header('Cache-Control: max-age=0');
+		
+		$writer->save('php://output');
 	}
 
 	public function ayarlar(){
@@ -1294,6 +1409,46 @@ class Yonetici extends CI_Controller {
 
 
 	/**
+	 * Dashboard dosyalarını listeleyen yardımcı fonksiyon
+	 */
+	private function getDashboardList() {
+		$dashboards = [];
+		$view_path = APPPATH . 'views/';
+		
+		// views klasöründeki *dashboard.php dosyalarını tara
+		$files = glob($view_path . '*dashboard.php');
+		
+		foreach($files as $file) {
+			$filename = basename($file, '.php');
+			$display_name = str_replace('-dashboard', '', $filename);
+			$display_name = ucfirst($display_name);
+			
+			// Özel isimlendirmeler
+			switch($display_name) {
+				case 'Default':
+					$display_name = 'Varsayılan Dashboard';
+					break;
+				case 'Muhasebe':
+					$display_name = 'Muhasebe Dashboard';
+					break;
+				case 'Satis':
+					$display_name = 'Satış Dashboard';
+					break;
+				case 'Admin':
+					$display_name = 'Yönetici Dashboard';
+					break;
+			}
+			
+			$dashboards[] = [
+				'value' => $filename,
+				'text' => $display_name
+			];
+		}
+		
+		return $dashboards;
+	}
+
+	/**
 	 * Kullanıcı Grubu Yönetimi
 	 */
 	public function kullaniciGrubu(){
@@ -1316,6 +1471,9 @@ class Yonetici extends CI_Controller {
 					 GROUP BY kg.kg_id
 					 ORDER BY kg.kg_id DESC";
 		$data["gruplar"] = $this->db->query($gruplarQ)->result();
+
+		// Dashboard listesi
+		$data["dashboards"] = $this->getDashboardList();
 
 		// Modül listesi
 		$data["moduller"] = [
@@ -1419,6 +1577,7 @@ class Yonetici extends CI_Controller {
 
 		$data["kg_adi"] = $kg_adi;
 		$data["kg_aciklama"] = $kg_aciklama;
+		$data["dashboard"] = postval("dashboard") ?: 'default-dashboard'; // Dashboard alanı ekle, default değer ver
 		$data["kg_durum"] = 1;
 		$data["kg_olusturan"] = $u_id;
 		$data["kg_olusturanAnaHesap"] = $anaHesap;
@@ -1494,6 +1653,9 @@ class Yonetici extends CI_Controller {
 			$data["grup_yetkileri"][$yetki->kgy_modul][] = $yetki->kgy_yetki;
 		}
 
+		// Dashboard listesi
+		$data["dashboards"] = $this->getDashboardList();
+
 		// Modül listesi
 		$data["moduller"] = [
 			1 => 'Cari',
@@ -1505,6 +1667,7 @@ class Yonetici extends CI_Controller {
 			7 => 'Giderler',
 			8 => 'Tahsilat',
 			9 => 'Aktivasyon',
+			999 => 'Detaylı Muhasebe Raporu',
 			1900 => 'Voip & Hakediş',
 			1901 => 'Voip - Operatör Tanımla',
 			1902 => 'Voip - Numara Tanımla',
@@ -1545,6 +1708,7 @@ class Yonetici extends CI_Controller {
 
 		$data["kg_adi"] = postval("kg_adi");
 		$data["kg_aciklama"] = postval("kg_aciklama");
+		$data["dashboard"] = postval("dashboard"); // Dashboard alanı ekle
 		$data["kg_guncelleyen"] = $u_id;
 		$data["kg_guncellemeTarihi"] = $tarihi;
 		$data["kg_guncellemeSaati"] = $saati;
@@ -1996,4 +2160,363 @@ class Yonetici extends CI_Controller {
 			WHERE il_id = ? 
 			ORDER BY ilce		", [$il_id])->result();
 				echo json_encode($ilceler);	}
+
+	/**
+	 * Changelog Yönetim Sayfası
+	 */
+	public function changelogListesi()
+	{
+		// Admin kontrolü
+		$login_info = $this->session->userdata('login_info');
+		if (!isset($login_info->grup_id) || $login_info->grup_id != 1) {
+			if ($this->input->is_ajax_request()) {
+				echo json_encode(['success' => false, 'message' => 'Yetkiniz yok']);
+				return;
+			}
+			redirect('home');
+		}
+
+		// SQL dosyası import kontrolü (query string ile)
+		$sql_file = $this->input->get('import_sql');
+		if ($sql_file) {
+			$this->importChangelogSql($sql_file);
+			return;
+		}
+
+		// View mi AJAX mi?
+		if (!$this->input->is_ajax_request()) {
+			// View göster
+			$data['baslik'] = 'Changelog Yönetimi';
+			$this->load->view('yonetici/changelog_listele', $data);
+			return;
+		}
+
+		// AJAX - DataTable için veri
+		header('Content-Type: application/json; charset=utf-8');
+		
+		$this->db->select('*');
+		$this->db->from('changelog');
+		$this->db->order_by('changelog_date', 'DESC');
+		$this->db->order_by('changelog_id', 'DESC');
+		
+		$query = $this->db->get();
+		$data = $query->result_array();
+
+		echo json_encode(['success' => true, 'data' => $data]);
+	}
+
+	/**
+	 * Changelog Detay Getir
+	 */
+	public function changelogDetay()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+		
+		// Admin kontrolü
+		$login_info = $this->session->userdata('login_info');
+		if (!isset($login_info->grup_id) || $login_info->grup_id != 1) {
+			echo json_encode(['success' => false, 'message' => 'Yetkiniz yok']);
+			return;
+		}
+
+		$id = $this->input->post('changelog_id');
+		
+		if (!$id) {
+			echo json_encode(['success' => false, 'message' => 'ID belirtilmedi']);
+			return;
+		}
+
+		$data = $this->db->get_where('changelog', ['changelog_id' => $id])->row_array();
+		
+		if (!$data) {
+			echo json_encode(['success' => false, 'message' => 'Kayıt bulunamadı']);
+			return;
+		}
+
+		echo json_encode(['success' => true, 'data' => $data]);
+	}
+
+	/**
+	 * Changelog Ekle
+	 */
+	public function changelogEkle()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+		
+		// Admin kontrolü
+		$login_info = $this->session->userdata('login_info');
+		if (!isset($login_info->grup_id) || $login_info->grup_id != 1) {
+			echo json_encode(['success' => false, 'message' => 'Yetkiniz yok']);
+			return;
+		}
+
+		$data = [
+			'changelog_version' => $this->input->post('changelog_version'),
+			'changelog_date' => $this->input->post('changelog_date'),
+			'changelog_type' => $this->input->post('changelog_type'),
+			'changelog_module' => $this->input->post('changelog_module'),
+			'changelog_description' => $this->input->post('changelog_description'),
+			'changelog_details' => $this->input->post('changelog_details'),
+			'changelog_file' => $this->input->post('changelog_file'),
+			'changelog_author' => $this->input->post('changelog_author'),
+			'changelog_durum' => $this->input->post('changelog_durum'),
+			'changelog_olusturan' => $login_info->kullanici_id
+		];
+
+		if ($this->db->insert('changelog', $data)) {
+			echo json_encode(['success' => true, 'message' => 'Changelog kaydı eklendi']);
+		} else {
+			echo json_encode(['success' => false, 'message' => 'Kayıt eklenemedi']);
+		}
+	}
+
+	/**
+	 * Changelog Güncelle
+	 */
+	public function changelogGuncelle()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+		
+		// Admin kontrolü
+		$login_info = $this->session->userdata('login_info');
+		if (!isset($login_info->grup_id) || $login_info->grup_id != 1) {
+			echo json_encode(['success' => false, 'message' => 'Yetkiniz yok']);
+			return;
+		}
+
+		$id = $this->input->post('changelog_id');
+		
+		if (!$id) {
+			echo json_encode(['success' => false, 'message' => 'ID belirtilmedi']);
+			return;
+		}
+
+		$data = [
+			'changelog_version' => $this->input->post('changelog_version'),
+			'changelog_date' => $this->input->post('changelog_date'),
+			'changelog_type' => $this->input->post('changelog_type'),
+			'changelog_module' => $this->input->post('changelog_module'),
+			'changelog_description' => $this->input->post('changelog_description'),
+			'changelog_details' => $this->input->post('changelog_details'),
+			'changelog_file' => $this->input->post('changelog_file'),
+			'changelog_author' => $this->input->post('changelog_author'),
+			'changelog_durum' => $this->input->post('changelog_durum')
+		];
+
+		if ($this->db->update('changelog', $data, ['changelog_id' => $id])) {
+			echo json_encode(['success' => true, 'message' => 'Changelog kaydı güncellendi']);
+		} else {
+			echo json_encode(['success' => false, 'message' => 'Kayıt güncellenemedi']);
+		}
+	}
+
+	/**
+	 * Changelog Sil
+	 */
+	public function changelogSil()
+	{
+		header('Content-Type: application/json; charset=utf-8');
+		
+		// Admin kontrolü
+		$login_info = $this->session->userdata('login_info');
+		if (!isset($login_info->grup_id) || $login_info->grup_id != 1) {
+			echo json_encode(['success' => false, 'message' => 'Yetkiniz yok']);
+			return;
+		}
+
+		$id = $this->input->post('changelog_id');
+		
+		if (!$id) {
+			echo json_encode(['success' => false, 'message' => 'ID belirtilmedi']);
+			return;
+		}
+
+		if ($this->db->delete('changelog', ['changelog_id' => $id])) {
+			echo json_encode(['success' => true, 'message' => 'Changelog kaydı silindi']);
+		} else {
+			echo json_encode(['success' => false, 'message' => 'Kayıt silinemedi']);
+		}
+	}
+
+	/**
+	 * SQL Dosyasından Changelog Import Et
+	 */
+	private function importChangelogSql($filename)
+	{
+		// Admin kontrolü
+		$login_info = $this->session->userdata('login_info');
+		if (!isset($login_info->grup_id) || $login_info->grup_id != 1) {
+			$this->session->set_flashdata('error', 'Bu işlem için yetkiniz yok!');
+			redirect('yonetici/changelogListesi');
+			return;
+		}
+
+		// Dosya adını temizle (güvenlik)
+		$filename = basename($filename);
+		$sql_path = FCPATH . 'temp/' . $filename;
+
+		// Dosya kontrolü
+		if (!file_exists($sql_path)) {
+			$this->session->set_flashdata('error', 'SQL dosyası bulunamadı: ' . $filename);
+			redirect('yonetici/changelogListesi');
+			return;
+		}
+
+		// SQL dosyasını oku
+		$sql_content = file_get_contents($sql_path);
+		
+		if (empty($sql_content)) {
+			$this->session->set_flashdata('error', 'SQL dosyası boş!');
+			redirect('yonetici/changelogListesi');
+			return;
+		}
+
+		try {
+			// SQL'i satırlara böl ve yorumları temizle
+			$lines = explode("\n", $sql_content);
+			$sql_query = '';
+			$inserted_count = 0;
+
+			foreach ($lines as $line) {
+				$line = trim($line);
+				
+				// Boş satırlar ve yorumları atla
+				if (empty($line) || substr($line, 0, 2) == '--') {
+					continue;
+				}
+
+				$sql_query .= $line . ' ';
+
+				// Noktalı virgül ile biten komutları çalıştır
+				if (substr(rtrim($line), -1) == ';') {
+					// Query çalıştır
+					if ($this->db->query($sql_query)) {
+						$inserted_count++;
+					}
+					$sql_query = '';
+				}
+			}
+
+			// Başarı mesajı
+			$this->session->set_flashdata('success', $inserted_count . ' adet changelog kaydı başarıyla eklendi!');
+			
+			// SQL dosyasını sil (opsiyonel - güvenlik için)
+			@unlink($sql_path);
+
+		} catch (Exception $e) {
+			$this->session->set_flashdata('error', 'SQL import hatası: ' . $e->getMessage());
+		}
+
+		redirect('yonetici/changelogListesi');
+	}
+
+	// SMS Yönetim Sayfası
+	public function smsYonetimi() {
+		$data["baslik"] = "Yönetici / SMS Yönetimi";
+		
+		// Filtreleme parametreleri
+		$durum = $this->input->get('durum');
+		$tip = $this->input->get('tip');
+		$tarih_baslangic = $this->input->get('tarih_baslangic');
+		$tarih_bitis = $this->input->get('tarih_bitis');
+		
+		// SMS loglarını çek
+		$this->db->select('sms_log.*, cari.cari_ad, cari.cari_soyad');
+		$this->db->from('sms_log');
+		$this->db->join('cari', 'cari.cari_id = sms_log.cari_id', 'left');
+		
+		if ($durum) {
+			$this->db->where('sms_log.durum', $durum);
+		}
+		if ($tip) {
+			$this->db->where('sms_log.tip', $tip);
+		}
+		if ($tarih_baslangic) {
+			$this->db->where('DATE(sms_log.gonderim_tarihi) >=', $tarih_baslangic);
+		}
+		if ($tarih_bitis) {
+			$this->db->where('DATE(sms_log.gonderim_tarihi) <=', $tarih_bitis);
+		}
+		
+		$this->db->order_by('sms_log.gonderim_tarihi', 'DESC');
+		$this->db->limit(500); // Son 500 kayıt
+		
+		$data['sms_logs'] = $this->db->get()->result();
+		
+		// İstatistikler
+		$data['stats'] = [
+			'toplam' => $this->db->count_all('sms_log'),
+			'basarili' => $this->db->where('durum', 'basarili')->count_all_results('sms_log'),
+			'basarisiz' => $this->db->where('durum', 'basarisiz')->count_all_results('sms_log'),
+			'bugun' => $this->db->where('DATE(gonderim_tarihi)', date('Y-m-d'))->count_all_results('sms_log')
+		];
+		
+		// SMS şablonunu yükle
+		$data['sms_sablonu'] = $this->getSmsTemplate();
+		
+		$this->load->view("yonetici/sms-yonetimi", $data);
+	}
+	
+	// SMS Şablonunu Getir
+	private function getSmsTemplate() {
+		// Şablon dosyası kontrolü
+		$template_file = FCPATH . 'application/config/sms_template.php';
+		
+		if (file_exists($template_file)) {
+			include($template_file);
+			return isset($sms_template) ? $sms_template : $this->getDefaultTemplate();
+		}
+		
+		return $this->getDefaultTemplate();
+	}
+	
+	// Varsayılan SMS Şablonu
+	private function getDefaultTemplate() {
+		return "Sayin Musterimiz,\n\n[ODEME_TURU] odemenizin vade tarihi [VADE_TARIHI] gunudur.\n\nKonuyla ilgili detayli bilgi ve destek icin 0552 173 10 37 numarali telefondan Burcu Hanim ile iletisime gecebilirsiniz.\n\nBilgilerinize sunar, iyi gunler dileriz.";
+	}
+	
+	// SMS Şablonunu Güncelle
+	public function smsSablonuGuncelle() {
+		$yeni_sablon = $this->input->post('sms_sablonu');
+		
+		if (empty($yeni_sablon)) {
+			$this->session->set_flashdata('error', 'SMS şablonu boş olamaz!');
+			redirect('yonetici/smsYonetimi');
+			return;
+		}
+		
+		// Şablon dosyasına kaydet
+		$template_file = FCPATH . 'application/config/sms_template.php';
+		$content = "<?php\ndefined('BASEPATH') OR exit('No direct script access allowed');\n\n";
+		$content .= "// SMS Vade Hatırlatma Şablonu\n";
+		$content .= "// Değişkenler: [ODEME_TURU], [VADE_TARIHI]\n\n";
+		$content .= '$sms_template = ' . var_export($yeni_sablon, true) . ";\n";
+		
+		if (file_put_contents($template_file, $content)) {
+			$this->session->set_flashdata('success', 'SMS şablonu başarıyla güncellendi!');
+		} else {
+			$this->session->set_flashdata('error', 'SMS şablonu güncellenirken hata oluştu!');
+		}
+		
+		redirect('yonetici/smsYonetimi');
+	}
+	
+	// SMS Log Detayı (AJAX)
+	public function smsLogDetay($id) {
+		$log = $this->db->where('id', $id)->get('sms_log')->row();
+		
+		if ($log) {
+			header('Content-Type: application/json');
+			echo json_encode([
+				'success' => true,
+				'data' => $log
+			]);
+		} else {
+			header('Content-Type: application/json');
+			echo json_encode([
+				'success' => false,
+				'message' => 'Log bulunamadı'
+			]);
+		}
+	}
 }
