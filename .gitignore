@@ -33,6 +33,7 @@ application/cache/*
 .idea/
 *.sublime-*
 .history/
+.lh/
 
 # Backup dosyaları
 backups/*
