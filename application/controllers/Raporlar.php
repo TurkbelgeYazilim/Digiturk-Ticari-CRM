@@ -1494,7 +1494,7 @@ class Raporlar extends CI_Controller {
 		JOIN satisfaturasi sf ON sf.satis_id = sfs.satisStok_satisFaturasiID
 		JOIN cari c ON c.cari_id = sf.satis_cariID
 		LEFT JOIN iller i ON i.id = c.cari_il
-		WHERE sf.satis_olusturmaTarihi BETWEEN ? AND ?
+		WHERE sf.satis_faturaTarihi BETWEEN ? AND ?
 		AND (st.stok_stokGrupKoduID = 1 OR st.stok_id IN (16, 13))";
 
 		
@@ -1549,8 +1549,9 @@ class Raporlar extends CI_Controller {
 		}
 
 		try {
-			// Eskişehir örneğine göre düzeltilmiş SQL query
+			// Eskişehir örneğine göre düzeltilmiş SQL query - DÜZELTME: satis_faturaTarihi kullan
 			$sql = "SELECT 
+					c.cari_id,
 					c.cari_ad,
 					CASE 
 						WHEN LENGTH(c.cari_firmaTelefon) >= 10 THEN
@@ -1573,9 +1574,9 @@ class Raporlar extends CI_Controller {
 				JOIN stok st ON st.stok_id = sfs.satisStok_stokID
 				JOIN cari c ON c.cari_id = sf.satis_cariID
 				JOIN iller i ON i.id = c.cari_il
-				JOIN ilceler ic ON ic.id = c.cari_ilce
+				LEFT JOIN ilceler ic ON ic.id = c.cari_ilce
 				LEFT JOIN kullanicilar k ON k.kullanici_id = c.cari_olusturan
-				WHERE sf.satis_olusturmaTarihi BETWEEN ? AND ?";
+				WHERE sf.satis_faturaTarihi BETWEEN ? AND ?";
 			
 			$params = array($baslangic_tarihi, $bitis_tarihi);
 			
@@ -1596,7 +1597,7 @@ class Raporlar extends CI_Controller {
 				$sql .= " AND (st.stok_stokGrupKoduID = 1 OR st.stok_id IN (16, 13))";
 			}
 			
-			$sql .= " ORDER BY sf.satis_faturaTarihi DESC, sfs.satisStok_fiyatMiktar DESC";
+			$sql .= " ORDER BY sf.satis_faturaTarihi DESC, c.cari_id, sfs.satisStok_fiyatMiktar DESC";
 
 			$result = $this->db->query($sql, $params);
 			
@@ -1613,6 +1614,744 @@ class Raporlar extends CI_Controller {
 			echo json_encode(['error' => 'Exception: ' . $e->getMessage()]);
 		}
 	}
+	
+	/**
+	 * Detaylı Muhasebe Raporu Sayfası
+	 * 
+	 * Tüm sözleşme, satış, tahsilat ve aktivasyon bilgilerini detaylı olarak görüntüler.
+	 * Model: Sozlesme_tahsilat_model
+	 * 
+	 * @author Batuhan KAHRAMAN
+	 * @version 1.0.0
+	 */
+	public function detayli_muhasebe_raporu()
+	{
+		// Helper yükle
+		$this->load->helper(['destek_helper', 'general_helper']);
+		
+		// Yetki kontrolü - Admin grubu (id=1) her zaman erişebilir
+		$control = session("r", "login_info");
+		$is_admin = $control && isset($control->grup_id) && $control->grup_id == 1;
+		
+		if (!$is_admin && !grup_modul_yetkisi_var(999)) {
+			$this->session->set_flashdata('hata', 'Bu sayfaya erişim yetkiniz yok!');
+			redirect('yetkisiz');
+		}
+		
+		// Model yükle
+		$this->load->model('Sozlesme_tahsilat_model');
+		
+		// Dropdown verileri
+		$data['ulkeler'] = $this->Sozlesme_tahsilat_model->get_ulke_listesi();
+		$data['iller'] = $this->Sozlesme_tahsilat_model->get_il_listesi();
+		$data['ilceler'] = $this->Sozlesme_tahsilat_model->get_ilce_listesi();
+		$data['bolge_sahipleri'] = $this->Sozlesme_tahsilat_model->get_bolge_sahipleri();
+		$data['sezonlar'] = $this->Sozlesme_tahsilat_model->get_sezon_listesi();
+		$data['stoklar'] = $this->Sozlesme_tahsilat_model->get_stok_listesi();
+		$data['personeller'] = $this->Sozlesme_tahsilat_model->get_personel_listesi();
+		$data['aktivasyon_hizmetler'] = $this->Sozlesme_tahsilat_model->get_aktivasyon_hizmet_listesi();
+		
+		// Kullanıcı bilgileri
+		$data['kullanici_grup_id'] = $control ? $control->grup_id : null;
+		$data['is_admin'] = $is_admin;
+		
+		// Yetki kontrolleri
+		$yetkiler = $this->session->userdata('yetkiler') ?? [];
+		$data['export_yetkisi'] = $is_admin || (isset($yetkiler[999]) && in_array(5, (array)$yetkiler[999]));
+		
+		// View yükle
+		$this->load->view('raporlar/sozlesme-tahsilat-raporu', $data);
+	}
+	
+	/**
+	 * Detaylı Muhasebe Raporu - Ajax Endpoint
+	 * 
+	 * DataTable için server-side data sağlar
+	 */
+	public function detayli_muhasebe_raporu_ajax()
+	{
+		// Helper yükle
+		$this->load->helper(['destek_helper', 'general_helper']);
+		
+		// Yetki kontrolü
+		$control = session("r", "login_info");
+		$is_admin = $control && $control->grup_id == 1;
+		
+		if (!$is_admin && !grup_modul_yetkisi_var(999)) {
+			header('Content-Type: application/json');
+			echo json_encode(['error' => 'Yetkisiz erişim']);
+			return;
+		}
+		
+		// Model yükle
+		$this->load->model('Sozlesme_tahsilat_model');
+		
+		// Filtreleri al
+		$filters = [
+			'baslangic_tarih' => $this->input->post('baslangic_tarih'),
+			'bitis_tarih' => $this->input->post('bitis_tarih'),
+			'ulke_id' => $this->input->post('ulke_id'),
+			'il_id' => $this->input->post('il_id'),
+			'ilce_id' => $this->input->post('ilce_id'),
+			'bolge_sahibi' => $this->input->post('bolge_sahibi'),
+			'sezon_id' => $this->input->post('sezon_id'),
+			'stok_id' => $this->input->post('stok_id'),
+			'personel_id' => $this->input->post('personel_id'),
+			'aktivasyon_hizmet' => $this->input->post('aktivasyon_hizmet'),
+			'cari_ad' => $this->input->post('cari_ad'),
+			'fatura_kesildi' => $this->input->post('fatura_kesildi'),
+		];
+		
+		// Boş filtreleri temizle (0 değerini korumak için özel kontrol)
+		$filters = array_filter($filters, function($value) {
+			return $value !== '' && $value !== null;
+		});
+		
+		// Sorgu çalıştır
+		$result = $this->Sozlesme_tahsilat_model->get_detayli_rapor($filters);
+		
+		// JSON olarak döndür
+		header('Content-Type: application/json');
+		echo json_encode([
+			'data' => $result->result()
+		]);
+	}
+	
+	/**
+	 * Detaylı Muhasebe Raporu - Excel Export
+	 * 
+	 * Filtrelenmiş verileri Excel olarak indirir
+	 */
+	public function detayli_muhasebe_raporu_excel()
+	{
+		// Timeout ve memory limitlerini artır
+		set_time_limit(300); // 5 dakika
+		ini_set('memory_limit', '512M');
+		
+		// Helper yükle
+		$this->load->helper(['destek_helper', 'general_helper']);
+		
+		// Yetki kontrolü
+		$control = session("r", "login_info");
+		$is_admin = $control && $control->grup_id == 1;
+		
+		if (!$is_admin && !grup_modul_yetkisi_var(999)) {
+			$this->session->set_flashdata('hata', 'Excel export yetkiniz yok!');
+			redirect('raporlar/detayli_muhasebe_raporu');
+		}
+		
+		// Model yükle
+		$this->load->model('Sozlesme_tahsilat_model');
+		
+		// Filtreleri al
+		$filters = [
+			'baslangic_tarih' => $this->input->get('baslangic_tarih'),
+			'bitis_tarih' => $this->input->get('bitis_tarih'),
+			'ulke_id' => $this->input->get('ulke_id'),
+			'il_id' => $this->input->get('il_id'),
+			'ilce_id' => $this->input->get('ilce_id'),
+			'bolge_sahibi' => $this->input->get('bolge_sahibi'),
+			'sezon_id' => $this->input->get('sezon_id'),
+			'stok_id' => $this->input->get('stok_id'),
+			'personel_id' => $this->input->get('personel_id'),
+			'aktivasyon_hizmet' => $this->input->get('aktivasyon_hizmet'),
+			'cari_ad' => $this->input->get('cari_ad'),
+			'fatura_kesildi' => $this->input->get('fatura_kesildi'),
+		];
+		
+		// Boş filtreleri temizle
+		$filters = array_filter($filters, function($value) {
+			return $value !== '' && $value !== null;
+		});
+		
+		// Sorgu çalıştır
+		$result = $this->Sozlesme_tahsilat_model->get_detayli_rapor($filters);
+		
+		// Hata kontrolü
+		if ($result === false) {
+			$this->session->set_flashdata('hata', 'Veri çekilirken bir hata oluştu! Lütfen tekrar deneyin.');
+			redirect('raporlar/detayli_muhasebe_raporu');
+			return;
+		}
+		
+		$data = $result->result();
+		
+		// Veri kontrolü
+		if (empty($data)) {
+			$this->session->set_flashdata('uyari', 'Seçili filtrelere göre veri bulunamadı!');
+			redirect('raporlar/detayli_muhasebe_raporu');
+			return;
+		}
+		
+		// Excel oluştur - Memory optimized
+		$spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+		$sheet = $spreadsheet->getActiveSheet();
+		$sheet->setTitle('Detaylı Muhasebe Raporu');
+		
+		// Başlık satırı
+		$headers = [
+			'İşletme No', 'İşletme Adı', 'Ülke', 'Şehir', 'İlçe', 'Bölge Sahibi', 'Sezon',
+			'Sözleşme Hizmeti', 'Sözleşme Tutarı', 'Sözleşme Tarihi', 'Fatura Durumu',
+			'Çek Tutarı', 'Çek Vade Tarihi', 'Senet Tutarı', 'Senet Vade Tarihi',
+			'Tahsilat Nakit Tutar', 'Tahsilat Nakit Tarih', 'Tahsilat Banka Tutar', 'Tahsilat Banka Tarih',
+			'Tahsilat Senet Tutar', 'Tahsilat Senet Tarih', 'Tahsilat Çek Tutar', 'Tahsilat Çek Tarih',
+			'Personel', 'Aktivasyon Üye No', 'Aktivasyon Hizmet'
+		];
+		
+		$col = 'A';
+		foreach ($headers as $header) {
+			$sheet->setCellValue($col . '1', $header);
+			$sheet->getStyle($col . '1')->getFont()->setBold(true);
+			$sheet->getStyle($col . '1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+				->getStartColor()->setRGB('4472C4');
+			$sheet->getStyle($col . '1')->getFont()->getColor()->setRGB('FFFFFF');
+			$col++;
+		}
+		
+		// Veri satırları - Basitleştirilmiş (memory optimizasyonu)
+		$row = 2;
+		foreach ($data as $item) {
+			// fromArray kullanarak toplu veri ekleme - daha hızlı ve az memory kullanır
+			// Tutar alanları için _raw değerlerini kullan (Excel'de düzgün gösterim için)
+			$rowData = [
+				$item->isletme_no ?? '',
+				$item->isletme_adi ?? '',
+				$item->ulke ?? '',
+				$item->sehir ?? '',
+				$item->ilce ?? '',
+				$item->bolge_sahibi ?? '',
+				$item->sezon ?? '',
+				$item->sozlesme_hizmeti ?? '',
+				$item->sozlesme_tutari_raw ?? '',
+				$item->sozlesme_tarihi ?? '',
+				$item->fatura_durumu ?? '',
+				$item->cek_tutari_raw ?? '',
+				$item->cek_vade_tarihi ?? '',
+				$item->senet_tutari_raw ?? '',
+				$item->senet_vade_tarihi ?? '',
+				$item->tahsilat_nakit_tutar_raw ?? '',
+				$item->tahsilat_nakit_tarih ?? '',
+				$item->tahsilat_banka_tutar_raw ?? '',
+				$item->tahsilat_banka_tarih ?? '',
+				$item->senet_tutari_raw ?? '', // Tahsilat senet için raw
+				$item->tahsilat_senet_tarih ?? '',
+				$item->cek_tutari_raw ?? '', // Tahsilat çek için raw
+				$item->tahsilat_cek_tarih ?? '',
+				$item->personel ?? '',
+				$item->aktivasyon_uye_no ?? '',
+				$item->aktivasyon_hizmet ?? ''
+			];
+			
+			$sheet->fromArray($rowData, null, 'A' . $row);
+			$row++;
+			
+			// Her 100 satırda bir memory'yi temizle
+			if ($row % 100 == 0) {
+				gc_collect_cycles();
+			}
+		}
+		
+		// Tutar sütunlarına sayı formatı uygula (Türk Lirası formatı)
+		// Sütunlar: I, L, N, P, R, T, V (Sözleşme, Çek, Senet, Tahsilatlar)
+		$tutarSutunlari = ['I', 'L', 'N', 'P', 'R', 'T', 'V'];
+		$sonSatir = $row - 1;
+		
+		if ($sonSatir >= 2) {
+			foreach ($tutarSutunlari as $col) {
+				// Range olarak format uygula (performans için)
+				$range = $col . '2:' . $col . $sonSatir;
+				$sheet->getStyle($range)->getNumberFormat()
+					->setFormatCode('#,##0.00 ₺');
+			}
+		}
+		
+		// Sütun genişlikleri - Sadece kullanılan sütunlar için
+		foreach (range('A', 'Z') as $col) {
+			$sheet->getColumnDimension($col)->setAutoSize(true);
+		}
+		
+		// Dosya adı
+		$filename = 'detayli_muhasebe_raporu_' . date('Y-m-d_His') . '.xlsx';
+		
+		// Header'ları ayarla
+		header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+		header('Content-Disposition: attachment;filename="' . $filename . '"');
+		header('Cache-Control: max-age=0');
+		header('Pragma: public');
+		
+		// Excel dosyasını çıktı ver
+		$writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+		$writer->save('php://output');
+		
+		// Memory temizliği
+		$spreadsheet->disconnectWorksheets();
+		unset($spreadsheet);
+		
+		exit;
+	}
+	
+	/**
+	 * İl listesi - Ajax endpoint (Ülkeye göre filtreli)
+	 */
+	public function get_il_listesi_ajax()
+	{
+		$this->load->model('Sozlesme_tahsilat_model');
+		$ulke_id = $this->input->post('ulke_id');
+		$result = $this->Sozlesme_tahsilat_model->get_il_listesi($ulke_id);
+		
+		header('Content-Type: application/json');
+		echo json_encode(['data' => $result]);
+	}
+	
+	/**
+	 * İlçe listesi - Ajax endpoint (İl'e göre filtreli)
+	 */
+	public function get_ilce_listesi_ajax()
+	{
+		$this->load->model('Sozlesme_tahsilat_model');
+		$il_id = $this->input->post('il_id');
+		$result = $this->Sozlesme_tahsilat_model->get_ilce_listesi($il_id);
+		
+		header('Content-Type: application/json');
+		echo json_encode(['data' => $result]);
+	}
+	
+	/**
+	 * Eski URL'lerden yeni URL'lere yönlendirme (Geriye dönük uyumluluk)
+	 */
+	public function sozlesme_tahsilat_raporu()
+	{
+		redirect('raporlar/detayli_muhasebe_raporu');
+	}
+	
+	public function sozlesme_tahsilat_raporu_ajax()
+	{
+		$this->detayli_muhasebe_raporu_ajax();
+	}
+	
+	public function sozlesme_tahsilat_raporu_excel()
+	{
+		$this->detayli_muhasebe_raporu_excel();
+	}
+
+	/**
+	 * SENARYO 1: Konum Satış Raporu
+	 * 
+	 * Ülke/İl/İlçe ve Sözleşme Hizmeti bazında özet satış raporu
+	 * Detay için modal ile ana raporu açar
+	 */
+	public function konum_satis_raporu()
+	{
+		// Yetki kontrolü - Module ID: 999
+		if (!grup_modul_yetkisi_var(999)) {
+			redirect('home/yetkisiz');
+		}
+
+		$this->load->model('Sozlesme_tahsilat_model');
+		
+		$data['baslik'] = 'Konum Satış Raporu';
+		$data['ulke_listesi'] = $this->Sozlesme_tahsilat_model->get_ulke_listesi();
+		$data['il_listesi'] = $this->Sozlesme_tahsilat_model->get_il_listesi();
+		$data['ilce_listesi'] = $this->Sozlesme_tahsilat_model->get_ilce_listesi();
+		
+		$this->load->view('raporlar/konum-satis-raporu', $data);
+	}
+
+	/**
+	 * AJAX: Konum Satış Raporu Verilerini Getir
+	 */
+	public function konum_satis_raporu_ajax()
+	{
+		// Yetki kontrolü
+		if (!grup_modul_yetkisi_var(999)) {
+			echo json_encode(['error' => 'Yetkiniz yok']);
+			return;
+		}
+
+		$this->load->model('Sozlesme_tahsilat_model');
+		
+		// Filtreleri al
+		$filters = [
+			'baslangic_tarih' => $this->input->post('baslangic_tarih'),
+			'bitis_tarih' => $this->input->post('bitis_tarih'),
+			'ulke_id' => $this->input->post('ulke_id'),
+			'il_id' => $this->input->post('il_id'),
+			'ilce_id' => $this->input->post('ilce_id')
+		];
+		
+		// Boş filtreleri temizle
+		$filters = array_filter($filters);
+		
+		// Veriyi çek
+		$result = $this->Sozlesme_tahsilat_model->get_konum_satis_ozet($filters);
+		
+		// DataTables formatında döndür
+		$data = [];
+		foreach ($result->result() as $row) {
+			$data[] = [
+				'ulke' => $row->ulke,
+				'sehir' => $row->sehir,
+				'ilce' => $row->ilce,
+				'sozlesme_hizmeti' => $row->sozlesme_hizmeti,
+				'adet' => $row->adet,
+				'toplam_tutar' => $row->toplam_tutar,
+				'toplam_tutar_raw' => $row->toplam_tutar_raw, // İstatistik kartları için
+				'detay_btn' => '<button class="btn btn-sm btn-info detay-goster" 
+								data-ulke-id="'.$row->ulke_id.'" 
+								data-il-id="'.$row->il_id.'" 
+								data-ilce-id="'.$row->ilce_id.'" 
+								data-stok-id="'.$row->stok_id.'">
+								<i class="fas fa-eye"></i> Detay
+							</button>'
+			];
+		}
+		
+		echo json_encode(['data' => $data]);
+	}
+
+	/**
+	 * EXCEL: Konum Satış Raporu Excel Export
+	 */
+	public function konum_satis_raporu_excel()
+	{
+		// Yetki kontrolü
+		if (!grup_modul_yetkisi_var(999)) {
+			redirect('home/yetkisiz');
+		}
+
+		$this->load->model('Sozlesme_tahsilat_model');
+		$this->load->library('excel');
+		
+		// Filtreleri al
+		$filters = [
+			'baslangic_tarih' => $this->input->get('baslangic_tarih'),
+			'bitis_tarih' => $this->input->get('bitis_tarih'),
+			'ulke_id' => $this->input->get('ulke_id'),
+			'il_id' => $this->input->get('il_id'),
+			'ilce_id' => $this->input->get('ilce_id')
+		];
+		
+		$filters = array_filter($filters);
+		
+		// Veriyi çek
+		$result = $this->Sozlesme_tahsilat_model->get_konum_satis_ozet($filters);
+		
+		// Excel oluştur
+		$spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+		$sheet = $spreadsheet->getActiveSheet();
+		$sheet->setTitle('Konum Satış Raporu');
+		
+		// Başlıklar
+		$headers = ['Ülke', 'Şehir', 'İlçe', 'Sözleşme Hizmeti', 'Adet', 'Toplam Tutar'];
+		$col = 'A';
+		foreach ($headers as $header) {
+			$sheet->setCellValue($col.'1', $header);
+			$sheet->getStyle($col.'1')->getFont()->setBold(true);
+			$sheet->getColumnDimension($col)->setAutoSize(true);
+			$col++;
+		}
+		
+		// Veriler
+		$row = 2;
+		foreach ($result->result() as $data) {
+			$sheet->setCellValue('A'.$row, $data->ulke);
+			$sheet->setCellValue('B'.$row, $data->sehir);
+			$sheet->setCellValue('C'.$row, $data->ilce);
+			$sheet->setCellValue('D'.$row, $data->sozlesme_hizmeti);
+			$sheet->setCellValue('E'.$row, $data->adet);
+			$sheet->setCellValue('F'.$row, $data->toplam_tutar);
+			$row++;
+		}
+		
+		// Dosya adı ve indirme
+		$filename = 'konum_satis_raporu_' . date('Y-m-d_His') . '.xlsx';
+		header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+		header('Content-Disposition: attachment;filename="' . $filename . '"');
+		header('Cache-Control: max-age=0');
+		
+		$writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+		$writer->save('php://output');
+		exit;
+	}
+
+	// ============================================================================
+	// SENARYO 2: PERSONEL SATIŞ RAPORU
+	// ============================================================================
+
+	/**
+	 * Personel Satış Raporu Ana Sayfa
+	 */
+	public function personel_satis_raporu()
+	{
+		// Yetki kontrolü - Module ID: 999
+		if (!grup_modul_yetkisi_var(999)) {
+			redirect('home/yetkisiz');
+		}
+
+		$this->load->model('Sozlesme_tahsilat_model');
+		
+		$data['baslik'] = 'Personel Satış Raporu';
+		$data['personel_listesi'] = $this->Sozlesme_tahsilat_model->get_personel_listesi();
+		
+		$this->load->view('raporlar/personel-satis-raporu', $data);
+	}
+
+	/**
+	 * AJAX: Personel Satış Raporu Verilerini Getir
+	 */
+	public function personel_satis_raporu_ajax()
+	{
+		// Yetki kontrolü
+		if (!grup_modul_yetkisi_var(999)) {
+			echo json_encode(['error' => 'Yetkiniz yok']);
+			return;
+		}
+
+		$this->load->model('Sozlesme_tahsilat_model');
+		
+		// Filtreleri al
+		$filters = [
+			'baslangic_tarih' => $this->input->post('baslangic_tarih'),
+			'bitis_tarih' => $this->input->post('bitis_tarih'),
+			'personel_id' => $this->input->post('personel_id')
+		];
+		
+		// Boş filtreleri temizle
+		$filters = array_filter($filters);
+		
+		// Veriyi çek
+		$result = $this->Sozlesme_tahsilat_model->get_personel_satis_ozet($filters);
+		
+		// DataTables formatında döndür
+		$data = [];
+		foreach ($result->result() as $row) {
+			$data[] = [
+				'personel' => $row->personel,
+				'personel_id' => $row->personel_id,
+				'sozlesme_hizmeti' => $row->sozlesme_hizmeti,
+				'adet' => $row->adet,
+				'toplam_tutar' => $row->toplam_tutar,
+				'toplam_tutar_raw' => $row->toplam_tutar_raw,
+				'detay_btn' => '<button class="btn btn-sm btn-info detay-goster" 
+								data-personel-id="'.$row->personel_id.'" 
+								data-stok-id="'.$row->stok_id.'">
+								<i class="fas fa-eye"></i> Detay
+							</button>'
+			];
+		}
+		
+		echo json_encode(['data' => $data]);
+	}
+
+	/**
+	 * EXCEL: Personel Satış Raporu Excel Export
+	 */
+	public function personel_satis_raporu_excel()
+	{
+		// Yetki kontrolü
+		if (!grup_modul_yetkisi_var(999)) {
+			redirect('home/yetkisiz');
+		}
+
+		$this->load->model('Sozlesme_tahsilat_model');
+		$this->load->library('excel');
+		
+		// Filtreleri al
+		$filters = [
+			'baslangic_tarih' => $this->input->get('baslangic_tarih'),
+			'bitis_tarih' => $this->input->get('bitis_tarih'),
+			'personel_id' => $this->input->get('personel_id')
+		];
+		
+		$filters = array_filter($filters);
+		
+		// Veriyi çek
+		$result = $this->Sozlesme_tahsilat_model->get_personel_satis_ozet($filters);
+		
+		// Excel oluştur
+		$spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+		$sheet = $spreadsheet->getActiveSheet();
+		$sheet->setTitle('Personel Satış Raporu');
+		
+		// Başlıklar
+		$headers = ['Personel', 'Sözleşme Hizmeti', 'Adet', 'Toplam Tutar'];
+		$col = 'A';
+		foreach ($headers as $header) {
+			$sheet->setCellValue($col . '1', $header);
+			$sheet->getStyle($col . '1')->getFont()->setBold(true);
+			$sheet->getStyle($col . '1')->getFill()
+				->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+				->getStartColor()->setRGB('4CAF50');
+			$sheet->getStyle($col . '1')->getFont()->getColor()->setRGB('FFFFFF');
+			$col++;
+		}
+		
+		// Veriler
+		$row = 2;
+		foreach ($result->result() as $data_row) {
+			$sheet->setCellValue('A' . $row, $data_row->personel);
+			$sheet->setCellValue('B' . $row, $data_row->sozlesme_hizmeti);
+			$sheet->setCellValue('C' . $row, $data_row->adet);
+			$sheet->setCellValue('D' . $row, $data_row->toplam_tutar);
+			$row++;
+		}
+		
+		// Kolon genişlikleri
+		$sheet->getColumnDimension('A')->setWidth(30);
+		$sheet->getColumnDimension('B')->setWidth(40);
+		$sheet->getColumnDimension('C')->setWidth(15);
+		$sheet->getColumnDimension('D')->setWidth(20);
+		
+		// Download
+		$filename = 'Personel_Satis_Raporu_' . date('Y-m-d_H-i-s') . '.xlsx';
+		
+		header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+		header('Content-Disposition: attachment;filename="' . $filename . '"');
+		header('Cache-Control: max-age=0');
+		
+		$writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+		$writer->save('php://output');
+		exit;
+	}
+
+	// ============================================================================
+	// SENARYO 3: PERSONEL TAHSİLAT RAPORU
+	// ============================================================================
+
+	/**
+	 * Personel Tahsilat Raporu Ana Sayfa
+	 */
+	public function personel_tahsilat_raporu()
+	{
+		// Yetki kontrolü - Module ID: 999
+		if (!grup_modul_yetkisi_var(999)) {
+			redirect('home/yetkisiz');
+		}
+
+		$this->load->model('Sozlesme_tahsilat_model');
+		
+		$data['baslik'] = 'Personel Tahsilat Raporu';
+		$data['personel_listesi'] = $this->Sozlesme_tahsilat_model->get_personel_listesi();
+		
+		$this->load->view('raporlar/personel-tahsilat-raporu', $data);
+	}
+
+	/**
+	 * AJAX: Personel Tahsilat Raporu Verilerini Getir
+	 */
+	public function personel_tahsilat_raporu_ajax()
+	{
+		// Yetki kontrolü
+		if (!grup_modul_yetkisi_var(999)) {
+			echo json_encode(['error' => 'Yetkiniz yok']);
+			return;
+		}
+
+		$this->load->model('Sozlesme_tahsilat_model');
+		
+		// Filtreleri al
+		$filters = [
+			'baslangic_tarih' => $this->input->post('baslangic_tarih'),
+			'bitis_tarih' => $this->input->post('bitis_tarih'),
+			'personel_id' => $this->input->post('personel_id')
+		];
+		
+		// Boş filtreleri temizle
+		$filters = array_filter($filters);
+		
+		// Veriyi çek
+		$result = $this->Sozlesme_tahsilat_model->get_personel_tahsilat_ozet($filters);
+		
+		// DataTables formatında döndür
+		$data = [];
+		foreach ($result->result() as $row) {
+			$data[] = [
+				'personel' => $row->personel,
+				'personel_id' => $row->personel_id,
+				'tahsilat_tipi' => $row->tahsilat_tipi,
+				'adet' => $row->adet,
+				'toplam_tutar' => $row->toplam_tutar,
+				'toplam_tutar_raw' => $row->toplam_tutar_raw,
+				'detay_btn' => '<button class="btn btn-sm btn-info detay-goster" 
+								data-personel-id="'.$row->personel_id.'" 
+								data-tahsilat-tipi="'.$row->tahsilat_tipi_id.'">
+								<i class="fas fa-eye"></i> Detay
+							</button>'
+			];
+		}
+		
+		echo json_encode(['data' => $data]);
+	}
+
+	/**
+	 * EXCEL: Personel Tahsilat Raporu Excel Export
+	 */
+	public function personel_tahsilat_raporu_excel()
+	{
+		// Yetki kontrolü
+		if (!grup_modul_yetkisi_var(999)) {
+			redirect('home/yetkisiz');
+		}
+
+		$this->load->model('Sozlesme_tahsilat_model');
+		$this->load->library('excel');
+		
+		// Filtreleri al
+		$filters = [
+			'baslangic_tarih' => $this->input->get('baslangic_tarih'),
+			'bitis_tarih' => $this->input->get('bitis_tarih'),
+			'personel_id' => $this->input->get('personel_id')
+		];
+		
+		$filters = array_filter($filters);
+		
+		// Veriyi çek
+		$result = $this->Sozlesme_tahsilat_model->get_personel_tahsilat_ozet($filters);
+		
+		// Excel oluştur
+		$spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+		$sheet = $spreadsheet->getActiveSheet();
+		$sheet->setTitle('Personel Tahsilat Raporu');
+		
+		// Başlıklar
+		$headers = ['Personel', 'Tahsilat Tipi', 'Adet', 'Toplam Tutar'];
+		$col = 'A';
+		foreach ($headers as $header) {
+			$sheet->setCellValue($col . '1', $header);
+			$sheet->getStyle($col . '1')->getFont()->setBold(true);
+			$sheet->getStyle($col . '1')->getFill()
+				->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+				->getStartColor()->setRGB('4CAF50');
+			$sheet->getStyle($col . '1')->getFont()->getColor()->setRGB('FFFFFF');
+			$col++;
+		}
+		
+		// Veriler
+		$row = 2;
+		foreach ($result->result() as $data_row) {
+			$sheet->setCellValue('A' . $row, $data_row->personel);
+			$sheet->setCellValue('B' . $row, $data_row->tahsilat_tipi);
+			$sheet->setCellValue('C' . $row, $data_row->adet);
+			$sheet->setCellValue('D' . $row, $data_row->toplam_tutar);
+			$row++;
+		}
+		
+		// Kolon genişlikleri
+		$sheet->getColumnDimension('A')->setWidth(30);
+		$sheet->getColumnDimension('B')->setWidth(20);
+		$sheet->getColumnDimension('C')->setWidth(15);
+		$sheet->getColumnDimension('D')->setWidth(20);
+		
+		// Download
+		$filename = 'Personel_Tahsilat_Raporu_' . date('Y-m-d_H-i-s') . '.xlsx';
+		
+		header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+		header('Content-Disposition: attachment;filename="' . $filename . '"');
+		header('Cache-Control: max-age=0');
+		
+		$writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+		$writer->save('php://output');
+		exit;
+	}
 
 }
-
