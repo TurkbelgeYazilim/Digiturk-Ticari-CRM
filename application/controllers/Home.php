@@ -53,15 +53,52 @@ class Home extends CI_Controller
 	public function index(){
 
 	
-
 		$data["baslik"] = "Anasayfa";
-
 		$anaHesap = anaHesapBilgisi();
 
-
+		// Kullanıcı grup dashboard kontrolü
+		$control2 = session("r", "login_info");
+		if ($control2 && isset($control2->grup_id) && $control2->grup_id) {
+			// Kullanıcının grup dashboard ayarını kontrol et
+			$grupDashboard = $this->db->query("SELECT dashboard FROM kullanici_grubu WHERE kg_id = ? AND kg_olusturanAnaHesap = ?", 
+				array($control2->grup_id, $anaHesap))->row();
+			
+			if ($grupDashboard && !empty($grupDashboard->dashboard)) {
+				// Grup için özel dashboard varsa kontrol et
+				$dashboardPath = $grupDashboard->dashboard;
+				
+				// Eğer default-dashboard ise default dashboard göster
+				if ($dashboardPath === 'default-dashboard') {
+					$this->load->view('default-dashboard', $data);
+					return;
+				}
+				
+				// Eğer index ise ana dashboard göster  
+				if ($dashboardPath === 'index') {
+					// Normal işleme devam et (altta ana dashboard kodu var)
+				} else {
+					// Diğer özel dashboard'lar için dosya var mı kontrol et
+					if (file_exists(APPPATH . 'views/' . $dashboardPath . '.php')) {
+						$this->load->view($dashboardPath, $data);
+						return;
+					} else {
+						// Dosya yoksa default dashboard göster
+						$this->load->view('default-dashboard', $data);
+						return;
+					}
+				}
+			} else {
+				// Grup dashboard ayarı yoksa default dashboard göster
+				$this->load->view('default-dashboard', $data);
+				return;
+			}
+		} else {
+			// Kullanıcı hiç gruba atanmamışsa default dashboard göster
+			$this->load->view('default-dashboard', $data);
+			return;
+		}
 
 		$modulGibSorgula = modulSorgula($anaHesap, 2);
-
 		$modulOcrSorgula = modulSorgula($anaHesap, 4);
 
 		if ($modulGibSorgula) {
@@ -173,11 +210,8 @@ class Home extends CI_Controller
 		
 
 		$data["satis_adedi_bugun"] = $satis_adedi_bugun;
-
 		$data["satis_toplam_bugun"] = $satis_toplam_bugun;
-
          
-
 			$this->load->view('index', $data);
 
 		}
@@ -1949,44 +1983,86 @@ class Home extends CI_Controller
 }
 
 	/**
-	 * Changelog verilerini getir (AJAX endpoint)
+	 * Changelog verilerini getir (AJAX endpoint) - Veritabanından
 	 */
 	public function getChangelog()
 	{
+		// JSON header ayarla
+		header('Content-Type: application/json; charset=utf-8');
+		
 		// Session kontrolü
 		$control = session("r", "login_info");
 		if (!$control || !isset($control->kullanici_id)) {
 			echo json_encode(['success' => false, 'message' => 'Oturum süresi dolmuş']);
-			return;
+			exit();
 		}
 
 		try {
-			// Changelog dosyasını oku
-			$changelog_path = APPPATH . 'config/changelog.json';
+			// Veritabanından changelog kayıtlarını çek (aktif olanlar, yeni->eski sıralı)
+			$this->db->select('changelog_version as version, changelog_date as date, changelog_type as type, changelog_module as module, changelog_description as description, changelog_details as details, changelog_file as file, changelog_author as author');
+			$this->db->from('changelog');
+			$this->db->where('changelog_durum', 1);
+			$this->db->order_by('changelog_date', 'DESC');
+			$this->db->order_by('changelog_id', 'DESC');
 			
-			if (!file_exists($changelog_path)) {
-				echo json_encode(['success' => false, 'message' => 'Changelog dosyası bulunamadı']);
-				return;
+			$query = $this->db->get();
+			
+			if (!$query) {
+				echo json_encode(['success' => false, 'message' => 'Veritabanı sorgusu başarısız']);
+				exit();
 			}
 
-			$changelog_content = file_get_contents($changelog_path);
-			$changelog_data = json_decode($changelog_content, true);
+			$changelog_records = $query->result_array();
 
-			if (json_last_error() !== JSON_ERROR_NONE) {
-				echo json_encode(['success' => false, 'message' => 'Changelog dosyası geçersiz JSON formatında']);
-				return;
+			if (empty($changelog_records)) {
+				echo json_encode(['success' => false, 'message' => 'Henüz changelog kaydı bulunmuyor']);
+				exit();
 			}
+
+			// Versiyonları grupla (aynı versiyon numarasına sahip değişiklikleri birleştir)
+			$versions = [];
+			foreach ($changelog_records as $record) {
+				$version = $record['version'];
+				
+				if (!isset($versions[$version])) {
+					$versions[$version] = [
+						'version' => $version,
+						'date' => $record['date'],
+						'changes' => []
+					];
+				}
+				
+				$versions[$version]['changes'][] = [
+					'type' => $record['type'],
+					'module' => $record['module'],
+					'description' => $record['description'],
+					'details' => $record['details'],
+					'file' => $record['file'],
+					'author' => $record['author']
+				];
+			}
+
+			// Array'i yeniden indeksle
+			$versions = array_values($versions);
+
+			// Response formatı
+			$changelog_data = [
+				'app_version' => isset($versions[0]['version']) ? $versions[0]['version'] : '1.0.0',
+				'last_updated' => isset($versions[0]['date']) ? $versions[0]['date'] : date('Y-m-d'),
+				'versions' => $versions
+			];
 
 			// Response döndür
 			echo json_encode([
 				'success' => true,
 				'data' => $changelog_data,
-				'file_path' => $changelog_path,
-				'last_modified' => date('Y-m-d H:i:s', filemtime($changelog_path))
+				'record_count' => count($changelog_records)
 			]);
+			exit();
 
 		} catch (Exception $e) {
 			echo json_encode(['success' => false, 'message' => 'Changelog verileri yüklenirken hata oluştu: ' . $e->getMessage()]);
+			exit();
 		}
 	}
 
@@ -1994,6 +2070,15 @@ class Home extends CI_Controller
 		echo "Test method çalışıyor!<br>";
 		echo "REQUEST_URI: " . $_SERVER['REQUEST_URI'] . "<br>";
 		echo "Bu sayfa çalışıyorsa CodeIgniter routing düzgün çalışıyor.";
+	}
+
+	/**
+	 * Default dashboard göster (kullanıcı grubunda dashboard ayarı yoksa)
+	 */
+	public function defaultDashboard()
+	{
+		$data["baslik"] = "Default Dashboard";
+		$this->load->view('default-dashboard', $data);
 	}
 
 }

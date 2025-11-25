@@ -404,6 +404,12 @@ class Tahsilat extends CI_Controller {
 
         redirect('tahsilat/tahsilat-olustur');
     }    public function tahsilat_olustur() {
+        // Yetki kontrolü
+        if (!grup_modul_yetkisi_var(510)) {
+            redirect(base_url('home'));
+            return;
+        }
+        
         // Get current user's ID
         $control2 = session("r", "login_info");
         $kullanici_id = $control2->kullanici_id;
@@ -626,10 +632,10 @@ class Tahsilat extends CI_Controller {
                 
                 WHERE mtd.tahsilat_tipi IN (1, 2, 3, 4)
                 AND (
-                    (mtd.tahsilat_tipi = 1 AND bh.bh_olusturan = '$u_id') OR
-                    (mtd.tahsilat_tipi = 2 AND c.cek_kullaniciID = '$u_id') OR
-                    (mtd.tahsilat_tipi = 3 AND kh.kh_olusturan = '$u_id') OR
-                    (mtd.tahsilat_tipi = 4 AND s.senet_kullaniciID = '$u_id')
+                    (mtd.tahsilat_tipi = 1 AND bh_cari.cari_olusturan = '$u_id') OR
+                    (mtd.tahsilat_tipi = 2 AND c_cari.cari_olusturan = '$u_id') OR
+                    (mtd.tahsilat_tipi = 3 AND kh_cari.cari_olusturan = '$u_id') OR
+                    (mtd.tahsilat_tipi = 4 AND s_cari.cari_olusturan = '$u_id')
                 )
                 ORDER BY mtd.olusturma_tarihi DESC";
                 

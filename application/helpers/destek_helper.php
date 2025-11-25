@@ -1936,3 +1936,170 @@ function demoDateExpireControl($userID){
 
 }
 
+// Stok grup adını getirir
+function stokGrupAd($stokGrup_id) {
+    $ci = get_instance();
+    
+    $query = "SELECT stokGrup_ad FROM stokGruplari WHERE stokGrup_id = ?";
+    $result = $ci->db->query($query, [$stokGrup_id])->row();
+    
+    return $result ? $result->stokGrup_ad : '-';
+}
+
+// Stok grubuna göre satış sözleşmesi sayısını hesaplar
+function satisStokGrupHesapla($stokGrup_id, $gun = 30) {
+    $ci = get_instance();
+    $anaHesap = anaHesapBilgisi();
+    
+    date_default_timezone_set('Europe/Istanbul');
+    $bugun = (new DateTime('now'))->format('Y-m-d');
+    $hesaplananTarih = date('Y-m-d', strtotime($bugun.'-'.$gun.' days'));
+    
+    $query = "SELECT COUNT(DISTINCT sf.satis_id) AS toplam
+              FROM satisFaturasi sf
+              JOIN satisFaturasiStok sfs ON sf.satis_id = sfs.satisStok_satisFaturasiID
+              JOIN stok st ON sfs.satisStok_stokID = st.stok_id
+              WHERE st.stok_stokGrupKoduID = ?
+              AND sf.satis_olusturanAnaHesap = ?
+              AND DATE(sf.satis_olusturmaTarihi) BETWEEN ? AND ?";
+    
+    $result = $ci->db->query($query, [$stokGrup_id, $anaHesap, $hesaplananTarih, $bugun])->row();
+    
+    return $result ? $result->toplam : 0;
+}
+
+// Stok grubuna göre tahsilat tutarını hesaplar
+function tahsilatStokGrupHesapla($stokGrup_id, $gun = 30) {
+    $ci = get_instance();
+    $anaHesap = anaHesapBilgisi();
+    
+    date_default_timezone_set('Europe/Istanbul');
+    $bugun = (new DateTime('now'))->format('Y-m-d');
+    $hesaplananTarih = date('Y-m-d', strtotime($bugun.'-'.$gun.' days'));
+    
+    // Banka hareketleri tahsilatı
+    $queryBanka = "SELECT SUM(bh.bh_giris) AS toplam
+                   FROM bankaHareketleri bh
+                   JOIN cari c ON bh.bh_cariID = c.cari_id
+                   JOIN satisFaturasi sf ON sf.satis_cariID = c.cari_id
+                   JOIN satisFaturasiStok sfs ON sf.satis_id = sfs.satisStok_satisFaturasiID
+                   JOIN stok st ON sfs.satisStok_stokID = st.stok_id
+                   WHERE st.stok_stokGrupKoduID = ?
+                   AND bh.bh_olusturanAnaHesap = ?
+                   AND DATE(bh.bh_olusturmaTarihi) BETWEEN ? AND ?
+                   AND bh.bh_giris > 0";
+    
+    // Kasa hareketleri tahsilatı
+    $queryKasa = "SELECT SUM(kh.kh_giris) AS toplam
+                  FROM kasaHareketleri kh
+                  JOIN cari c ON kh.kh_cariID = c.cari_id
+                  JOIN satisFaturasi sf ON sf.satis_cariID = c.cari_id
+                  JOIN satisFaturasiStok sfs ON sf.satis_id = sfs.satisStok_satisFaturasiID
+                  JOIN stok st ON sfs.satisStok_stokID = st.stok_id
+                  WHERE st.stok_stokGrupKoduID = ?
+                  AND kh.kh_olusturanAnaHesap = ?
+                  AND DATE(kh.kh_olusturmaTarihi) BETWEEN ? AND ?
+                  AND kh.kh_giris > 0";
+    
+    $bankaResult = $ci->db->query($queryBanka, [$stokGrup_id, $anaHesap, $hesaplananTarih, $bugun])->row();
+    $kasaResult = $ci->db->query($queryKasa, [$stokGrup_id, $anaHesap, $hesaplananTarih, $bugun])->row();
+    
+    $toplam = ($bankaResult->toplam ?? 0) + ($kasaResult->toplam ?? 0);
+    
+    return number_format($toplam, 2, ',', '.');
+}
+
+// Stok grubuna göre alacak tutarını hesaplar
+function alacakStokGrupHesapla($stokGrup_id, $gun = 30) {
+    $ci = get_instance();
+    $anaHesap = anaHesapBilgisi();
+    
+    date_default_timezone_set('Europe/Istanbul');
+    $bugun = (new DateTime('now'))->format('Y-m-d');
+    $hesaplananTarih = date('Y-m-d', strtotime($bugun.'-'.$gun.' days'));
+    
+    // Satış faturaları toplamı
+    $querySatis = "SELECT SUM(sfs.satisStok_fiyatMiktar) AS toplam
+                   FROM satisFaturasi sf
+                   JOIN satisFaturasiStok sfs ON sf.satis_id = sfs.satisStok_satisFaturasiID
+                   JOIN stok st ON sfs.satisStok_stokID = st.stok_id
+                   WHERE st.stok_stokGrupKoduID = ?
+                   AND sf.satis_olusturanAnaHesap = ?
+                   AND DATE(sf.satis_olusturmaTarihi) BETWEEN ? AND ?";
+    
+    // Tahsilatlar toplamı (banka + kasa)
+    $queryTahsilat = "SELECT 
+                      (SELECT COALESCE(SUM(bh.bh_giris), 0)
+                       FROM bankaHareketleri bh
+                       JOIN cari c ON bh.bh_cariID = c.cari_id
+                       JOIN satisFaturasi sf ON sf.satis_cariID = c.cari_id
+                       JOIN satisFaturasiStok sfs ON sf.satis_id = sfs.satisStok_satisFaturasiID
+                       JOIN stok st ON sfs.satisStok_stokID = st.stok_id
+                       WHERE st.stok_stokGrupKoduID = ?
+                       AND bh.bh_olusturanAnaHesap = ?
+                       AND DATE(bh.bh_olusturmaTarihi) BETWEEN ? AND ?
+                       AND bh.bh_giris > 0) +
+                      (SELECT COALESCE(SUM(kh.kh_giris), 0)
+                       FROM kasaHareketleri kh
+                       JOIN cari c ON kh.kh_cariID = c.cari_id
+                       JOIN satisFaturasi sf ON sf.satis_cariID = c.cari_id
+                       JOIN satisFaturasiStok sfs ON sf.satis_id = sfs.satisStok_satisFaturasiID
+                       JOIN stok st ON sfs.satisStok_stokID = st.stok_id
+                       WHERE st.stok_stokGrupKoduID = ?
+                       AND kh.kh_olusturanAnaHesap = ?
+                       AND DATE(kh.kh_olusturmaTarihi) BETWEEN ? AND ?
+                       AND kh.kh_giris > 0) AS toplam";
+    
+    $satisResult = $ci->db->query($querySatis, [$stokGrup_id, $anaHesap, $hesaplananTarih, $bugun])->row();
+    $tahsilatResult = $ci->db->query($queryTahsilat, [
+        $stokGrup_id, $anaHesap, $hesaplananTarih, $bugun,
+        $stokGrup_id, $anaHesap, $hesaplananTarih, $bugun
+    ])->row();
+    
+    $alacak = ($satisResult->toplam ?? 0) - ($tahsilatResult->toplam ?? 0);
+    
+    return number_format($alacak, 2, ',', '.');
+}
+
+// Stok grubuna göre bekleyen tahsilat tutarını hesaplar (onay_bekleyen)
+function bekleyenTahsilatStokGrupHesapla($stokGrup_id) {
+    $ci = get_instance();
+    
+    // muhasebe_tahsilat_durum tablosundan onay bekleyen tahsilatları getir
+    $query = "SELECT SUM(
+                  CASE 
+                      WHEN mtd.tahsilat_tipi = 1 THEN COALESCE(bh.bh_giris, bh.bh_cikis, 0)
+                      WHEN mtd.tahsilat_tipi = 2 THEN COALESCE(ck.cek_tutar, 0)
+                      WHEN mtd.tahsilat_tipi = 3 THEN COALESCE(kh.kh_giris, kh.kh_cikis, 0)
+                      WHEN mtd.tahsilat_tipi = 4 THEN COALESCE(s.senet_tutar, 0)
+                      ELSE 0
+                  END
+              ) AS toplam
+              FROM muhasebe_tahsilat_durum mtd
+              LEFT JOIN bankaHareketleri bh ON (mtd.tahsilat_tipi = 1 AND mtd.kayit_id = bh.bh_id)
+              LEFT JOIN cek ck ON (mtd.tahsilat_tipi = 2 AND mtd.kayit_id = ck.cek_id)
+              LEFT JOIN kasaHareketleri kh ON (mtd.tahsilat_tipi = 3 AND mtd.kayit_id = kh.kh_id)
+              LEFT JOIN senet s ON (mtd.tahsilat_tipi = 4 AND mtd.kayit_id = s.senet_id)
+              LEFT JOIN cari c ON (
+                  (mtd.tahsilat_tipi = 1 AND c.cari_id = bh.bh_cariID) OR
+                  (mtd.tahsilat_tipi = 2 AND c.cari_id = ck.cek_cariID) OR
+                  (mtd.tahsilat_tipi = 3 AND c.cari_id = kh.kh_cariID) OR
+                  (mtd.tahsilat_tipi = 4 AND c.cari_id = s.senet_cariID)
+              )
+              WHERE mtd.durum = 1
+              AND EXISTS (
+                  SELECT 1 
+                  FROM satisFaturasi sf
+                  JOIN satisFaturasiStok sfs ON sf.satis_id = sfs.satisStok_satisFaturasiID
+                  JOIN stok st ON sfs.satisStok_stokID = st.stok_id
+                  WHERE sf.satis_cariID = c.cari_id
+                  AND st.stok_stokGrupKoduID = ?
+              )";
+    
+    $result = $ci->db->query($query, [$stokGrup_id])->row();
+    
+    $toplam = $result->toplam ?? 0;
+    
+    return number_format($toplam, 2, ',', '.');
+}
+

@@ -1598,7 +1598,6 @@ class Cari extends CI_Controller
 		try {
 			$personelQ = "SELECT kullanici_id, kullanici_ad, kullanici_soyad 
 						  FROM kullanicilar 
-						  WHERE kullanici_durum = 1 
 						  ORDER BY kullanici_ad ASC, kullanici_soyad ASC";
 			
 			$personeller = $this->db->query($personelQ)->result();

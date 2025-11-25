@@ -96,6 +96,25 @@
 											</div>
 										</div>
 										
+										<div class="row">
+											<div class="col-md-12">
+												<div class="form-group">
+													<label>Dashboard Türü</label>
+													<select class="form-control" name="dashboard">
+														<option value="">Dashboard Seçiniz</option>
+														<?php foreach($dashboards as $dashboard): ?>
+															<option value="<?= $dashboard['value'] ?>" <?= ($grup->dashboard == $dashboard['value']) ? 'selected' : ''; ?>>
+																<?= $dashboard['text'] ?>
+															</option>
+														<?php endforeach; ?>
+													</select>
+													<small class="form-text text-muted">
+														Bu gruba atanan kullanıcılar giriş yaptıklarında seçilen dashboard'u görecekler.
+													</small>
+												</div>
+											</div>
+										</div>
+										
 										<hr>
 										<div class="row">
 											<div class="col">
@@ -115,6 +134,7 @@
 														<th class="text-center">Ekleme Yetkisi</th>
 														<th class="text-center">Düzenleme Yetkisi</th>
 														<th class="text-center">Silme Yetkisi</th>
+														<th class="text-center">Ülke Gör</th>
 													</tr>
 												</thead>
 												<tbody>
@@ -125,67 +145,67 @@
 														<td rowspan="4"><span class="badge bg-dark text-light">Admin</span></td>
 														<td>Admin Paneli (ID: 1100)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1100[]" value="1" <?php if(isset($grup_yetkileri[1100]) && in_array(1, $grup_yetkileri[1100])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Firma Yönetimi (ID: 1110)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1110[]" value="1" <?php if(isset($grup_yetkileri[1110]) && in_array(1, $grup_yetkileri[1110])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Genel Log Kayıtları (ID: 1120)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1120[]" value="1" <?php if(isset($grup_yetkileri[1120]) && in_array(1, $grup_yetkileri[1120])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Destek Sistemi (ID: 1130)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1130[]" value="1" <?php if(isset($grup_yetkileri[1130]) && in_array(1, $grup_yetkileri[1130])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td><span class="badge bg-dark text-light">Admin</span></td>
 														<td>Duyurular (ID: 1140)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1140[]" value="1" <?php if(isset($grup_yetkileri[1140]) && in_array(1, $grup_yetkileri[1140])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>													<!-- Yönetici Modülü -->
 													<tr>
 														<td rowspan="4"><span class="badge bg-secondary text-light">Yönetici</span></td>
 														<td>Yönetici Paneli (ID: 1200)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1200[]" value="1" <?php if(isset($grup_yetkileri[1200]) && in_array(1, $grup_yetkileri[1200])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Kullanıcı Listesi (ID: 1210)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1210[]" value="1" <?php if(isset($grup_yetkileri[1210]) && in_array(1, $grup_yetkileri[1210])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Kullanıcı Grupları (ID: 1220)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1220[]" value="1" <?php if(isset($grup_yetkileri[1220]) && in_array(1, $grup_yetkileri[1220])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Kullanıcı Logları (ID: 1230)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1230[]" value="1" <?php if(isset($grup_yetkileri[1230]) && in_array(1, $grup_yetkileri[1230])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td><span class="badge bg-secondary text-light">Yönetici</span></td>
 														<td>Ayarlar (ID: 1240)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1240[]" value="1" <?php if(isset($grup_yetkileri[1240]) && in_array(1, $grup_yetkileri[1240])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>													<!-- Destek Modülü -->
 													<tr>
 														<td><span class="badge bg-warning text-dark">Destek</span></td>
 														<td>Destek (ID: 1300)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1300[]" value="1" <?php if(isset($grup_yetkileri[1300]) && in_array(1, $grup_yetkileri[1300])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>													<!-- Voip & Hakediş Modülü -->
 													<tr>
 														<td rowspan="9"><span class="badge bg-primary text-light">Voip & Hakediş</span></td>
 														<td>Voip & Hakediş Ana Menü (ID: 1900)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1900[]" value="1" <?php if(isset($grup_yetkileri[1900]) && in_array(1, $grup_yetkileri[1900])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Operatör Tanımla (ID: 1901)</td>
@@ -244,51 +264,59 @@
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1908[]" value="4" <?php if(isset($grup_yetkileri[1908]) && in_array(4, $grup_yetkileri[1908])) echo "checked"; ?>></div></td>
 													</tr>													<!-- Raporlar Modülü -->
 													<tr>
-														<td rowspan="7"><span class="badge bg-info text-light">Raporlar</span></td>
+														<td rowspan="8"><span class="badge bg-info text-light">Raporlar</span></td>
 														<td>Raporlar Ana Menü (ID: 1400)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1400[]" value="1" <?php if(isset($grup_yetkileri[1400]) && in_array(1, $grup_yetkileri[1400])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+													</tr>
+													<tr>
+														<td>Detaylı Muhasebe Raporu (ID: 999)</td>
+														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_999[]" value="1" <?php if(isset($grup_yetkileri[999]) && in_array(1, $grup_yetkileri[999])) echo "checked"; ?>></div></td>
+														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_999[]" value="2" <?php if(isset($grup_yetkileri[999]) && in_array(2, $grup_yetkileri[999])) echo "checked"; ?>></div></td>
+														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_999[]" value="3" <?php if(isset($grup_yetkileri[999]) && in_array(3, $grup_yetkileri[999])) echo "checked"; ?>></div></td>
+														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_999[]" value="4" <?php if(isset($grup_yetkileri[999]) && in_array(4, $grup_yetkileri[999])) echo "checked"; ?>></div></td>
+														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_999[]" value="5" <?php if(isset($grup_yetkileri[999]) && in_array(5, $grup_yetkileri[999])) echo "checked"; ?>></div></td>
 													</tr>
 													<tr>
 														<td>Digiturk Personel Ciro/Adet Raporu (ID: 1401)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1401[]" value="1" <?php if(isset($grup_yetkileri[1401]) && in_array(1, $grup_yetkileri[1401])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Digiturk Bölge Müdürü Ciro/Adet (ID: 1402)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1402[]" value="1" <?php if(isset($grup_yetkileri[1402]) && in_array(1, $grup_yetkileri[1402])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Digiturk Şehir Ciro/Adet (ID: 1403)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1403[]" value="1" <?php if(isset($grup_yetkileri[1403]) && in_array(1, $grup_yetkileri[1403])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>S-Sport Personel Ciro/Adet (ID: 1404)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1404[]" value="1" <?php if(isset($grup_yetkileri[1404]) && in_array(1, $grup_yetkileri[1404])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>S-Sport Bölge Müdürü Ciro/Adet (ID: 1405)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1405[]" value="1" <?php if(isset($grup_yetkileri[1405]) && in_array(1, $grup_yetkileri[1405])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>S-Sport Şehir Ciro/Adet (ID: 1406)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1406[]" value="1" <?php if(isset($grup_yetkileri[1406]) && in_array(1, $grup_yetkileri[1406])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>													<!-- Muhasebe Modülü -->
 													<tr>
-														<td rowspan="5"><span class="badge bg-warning text-dark">Muhasebe</span></td>
+														<td rowspan="6"><span class="badge bg-warning text-dark">Muhasebe</span></td>
 														<td>Muhasebe Ana Menü (ID: 520)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_520[]" value="1" <?php if(isset($grup_yetkileri[520]) && in_array(1, $grup_yetkileri[520])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Onay Bekleyen Tahsilatlar (ID: 521)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_521[]" value="1" <?php if(isset($grup_yetkileri[521]) && in_array(1, $grup_yetkileri[521])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Senet Yönetimi (ID: 522)</td>
@@ -300,19 +328,24 @@
 													<tr>
 														<td>Müşteri Listesi (ID: 530)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_530[]" value="1" <?php if(isset($grup_yetkileri[530]) && in_array(1, $grup_yetkileri[530])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Tam Ana Rapor (ID: 531)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_531[]" value="1" <?php if(isset($grup_yetkileri[531]) && in_array(1, $grup_yetkileri[531])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+													</tr>
+													<tr>
+														<td>📱 SMS Yönetimi (ID: 540)</td>
+														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_540[]" value="1" <?php if(isset($grup_yetkileri[540]) && in_array(1, $grup_yetkileri[540])) echo "checked"; ?>></div></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<!-- Müşteri Modülü -->
 													<tr>
 														<td rowspan="6"><span class="badge bg-success-light">Müşteri</span></td>
 														<td>Müşteri Ana Menü (ID: 100)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_100[]" value="1" <?php if(isset($grup_yetkileri[100]) && in_array(1, $grup_yetkileri[100])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Müşteri Oluştur (ID: 110)</td>
@@ -338,18 +371,18 @@
 													<tr>
 														<td>Müşteri Grupları (ID: 140)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_140[]" value="1" <?php if(isset($grup_yetkileri[140]) && in_array(1, $grup_yetkileri[140])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Müşteri Dekont (ID: 150)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_150[]" value="1" <?php if(isset($grup_yetkileri[150]) && in_array(1, $grup_yetkileri[150])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>													<!-- Stok Modülü -->
 													<tr>
 														<td rowspan="5"><span class="badge bg-warning-light">Stok</span></td>
 														<td>Stok Ana Menü (ID: 200)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_200[]" value="1" <?php if(isset($grup_yetkileri[200]) && in_array(1, $grup_yetkileri[200])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Stok Açılış Kartı (ID: 210)</td>
@@ -361,23 +394,23 @@
 													<tr>
 														<td>Stok Listesi (ID: 220)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_220[]" value="1" <?php if(isset($grup_yetkileri[220]) && in_array(1, $grup_yetkileri[220])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Stok Hareketleri (ID: 230)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_230[]" value="1" <?php if(isset($grup_yetkileri[230]) && in_array(1, $grup_yetkileri[230])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Stok Grupları (ID: 240)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_240[]" value="1" <?php if(isset($grup_yetkileri[240]) && in_array(1, $grup_yetkileri[240])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>													<!-- Satış/Fatura Modülü -->
 													<tr>
 														<td rowspan="19"><span class="badge bg-danger-light">Satış</span></td>
 														<td>Satış Ana Menü (ID: 300)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_300[]" value="1" <?php if(isset($grup_yetkileri[300]) && in_array(1, $grup_yetkileri[300])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Satış Sözleşmesi (ID: 310)</td>
@@ -395,91 +428,91 @@
 													<tr>
 														<td>Alış Faturası (ID: 330)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_330[]" value="1" <?php if(isset($grup_yetkileri[330]) && in_array(1, $grup_yetkileri[330])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Alış Faturası Listesi (ID: 340)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_340[]" value="1" <?php if(isset($grup_yetkileri[340]) && in_array(1, $grup_yetkileri[340])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Proforma Faturası (ID: 350)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_350[]" value="1" <?php if(isset($grup_yetkileri[350]) && in_array(1, $grup_yetkileri[350])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Proforma Faturası Listesi (ID: 360)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_360[]" value="1" <?php if(isset($grup_yetkileri[360]) && in_array(1, $grup_yetkileri[360])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Etiketler (ID: 370)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_370[]" value="1" <?php if(isset($grup_yetkileri[370]) && in_array(1, $grup_yetkileri[370])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>													<tr>
 														<td>e-Fatura Oluştur (ID: 380)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_380[]" value="1" <?php if(isset($grup_yetkileri[380]) && in_array(1, $grup_yetkileri[380])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>e-Fatura Gelen Kutusu (ID: 390)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_390[]" value="1" <?php if(isset($grup_yetkileri[390]) && in_array(1, $grup_yetkileri[390])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>e-Fatura Giden Kutusu (ID: 400)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_400[]" value="1" <?php if(isset($grup_yetkileri[400]) && in_array(1, $grup_yetkileri[400])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>e-Arşiv Fatura Oluştur (ID: 410)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_410[]" value="1" <?php if(isset($grup_yetkileri[410]) && in_array(1, $grup_yetkileri[410])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>e-Arşiv Faturaları (ID: 420)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_420[]" value="1" <?php if(isset($grup_yetkileri[420]) && in_array(1, $grup_yetkileri[420])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>GIB/IVD Gelen e-Arşiv (ID: 430)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_430[]" value="1" <?php if(isset($grup_yetkileri[430]) && in_array(1, $grup_yetkileri[430])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Taslak Fatura Yükle (ID: 440)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_440[]" value="1" <?php if(isset($grup_yetkileri[440]) && in_array(1, $grup_yetkileri[440])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>e-İrsaliye Oluştur (ID: 450)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_450[]" value="1" <?php if(isset($grup_yetkileri[450]) && in_array(1, $grup_yetkileri[450])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>													<tr>
 														<td>Gelen e-İrsaliye (ID: 460)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_460[]" value="1" <?php if(isset($grup_yetkileri[460]) && in_array(1, $grup_yetkileri[460])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Giden e-İrsaliye (ID: 470)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_470[]" value="1" <?php if(isset($grup_yetkileri[470]) && in_array(1, $grup_yetkileri[470])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Seri Yönetimi (ID: 480)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_480[]" value="1" <?php if(isset($grup_yetkileri[480]) && in_array(1, $grup_yetkileri[480])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>													<!-- Tahsilat Modülü -->
 													<tr>
 														<td rowspan="3"><span class="badge bg-primary-light">Tahsilat</span></td>
 														<td>Tahsilat Ana Menü (ID: 500)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_500[]" value="1" <?php if(isset($grup_yetkileri[500]) && in_array(1, $grup_yetkileri[500])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Tahsilat Oluştur (ID: 510)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_510[]" value="1" <?php if(isset($grup_yetkileri[510]) && in_array(1, $grup_yetkileri[510])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Tahsilat Listesi (ID: 511)</td>
@@ -492,113 +525,113 @@
 														<td rowspan="8"><span class="badge bg-primary-light">Kasa</span></td>
 														<td>Kasa Ana Menü (ID: 600)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_600[]" value="1" <?php if(isset($grup_yetkileri[600]) && in_array(1, $grup_yetkileri[600])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Kasa Açılış Kartı (ID: 610)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_610[]" value="1" <?php if(isset($grup_yetkileri[610]) && in_array(1, $grup_yetkileri[610])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Kasa Listesi (ID: 620)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_620[]" value="1" <?php if(isset($grup_yetkileri[620]) && in_array(1, $grup_yetkileri[620])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Kasa Hareket Kayıtları (ID: 630)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_630[]" value="1" <?php if(isset($grup_yetkileri[630]) && in_array(1, $grup_yetkileri[630])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Kasa Tahsilat (ID: 640)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_640[]" value="1" <?php if(isset($grup_yetkileri[640]) && in_array(1, $grup_yetkileri[640])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Kasa Ödeme İşlemi (ID: 650)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_650[]" value="1" <?php if(isset($grup_yetkileri[650]) && in_array(1, $grup_yetkileri[650])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Kasa Virman (ID: 660)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_660[]" value="1" <?php if(isset($grup_yetkileri[660]) && in_array(1, $grup_yetkileri[660])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Kasadan Bankaya Transfer (ID: 670)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_670[]" value="1" <?php if(isset($grup_yetkileri[670]) && in_array(1, $grup_yetkileri[670])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>													<!-- Banka Modülü -->
 													<tr>
 														<td rowspan="7"><span class="badge bg-secondary-light">Banka</span></td>
 														<td>Banka Ana Menü (ID: 700)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_700[]" value="1" <?php if(isset($grup_yetkileri[700]) && in_array(1, $grup_yetkileri[700])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Banka Açılış Kartı (ID: 710)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_710[]" value="1" <?php if(isset($grup_yetkileri[710]) && in_array(1, $grup_yetkileri[710])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Banka Listesi (ID: 720)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_720[]" value="1" <?php if(isset($grup_yetkileri[720]) && in_array(1, $grup_yetkileri[720])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Banka Hareket Kayıtları (ID: 730)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_730[]" value="1" <?php if(isset($grup_yetkileri[730]) && in_array(1, $grup_yetkileri[730])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Banka Havale / EFT (ID: 740)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_740[]" value="1" <?php if(isset($grup_yetkileri[740]) && in_array(1, $grup_yetkileri[740])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Banka Virman (ID: 750)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_750[]" value="1" <?php if(isset($grup_yetkileri[750]) && in_array(1, $grup_yetkileri[750])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Bankadan Kasaya Transfer (ID: 760)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_760[]" value="1" <?php if(isset($grup_yetkileri[760]) && in_array(1, $grup_yetkileri[760])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>													<!-- Çek Modülü -->
 													<tr>
 														<td rowspan="2"><span class="badge bg-info-light">Çek</span></td>
 														<td>Çek Ana Menü (ID: 800)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_800[]" value="1" <?php if(isset($grup_yetkileri[800]) && in_array(1, $grup_yetkileri[800])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Çek Portföyü (ID: 810)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_810[]" value="1" <?php if(isset($grup_yetkileri[810]) && in_array(1, $grup_yetkileri[810])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<!-- Senet Modülü -->
 													<tr>
 														<td rowspan="2"><span class="badge bg-info-light">Senet</span></td>
 														<td>Senet Ana Menü (ID: 522)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_522[]" value="1" <?php if(isset($grup_yetkileri[522]) && in_array(1, $grup_yetkileri[522])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Senet Portföyü (ID: 910)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_910[]" value="1" <?php if(isset($grup_yetkileri[910]) && in_array(1, $grup_yetkileri[910])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>													<!-- Giderler Modülü -->
 													<tr>
 														<td><span class="badge bg-primary text-light">Giderler</span></td>
 														<td>Giderler Ana Menü (ID: 1000)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1000[]" value="1" <?php if(isset($grup_yetkileri[1000]) && in_array(1, $grup_yetkileri[1000])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>													<!-- Teklif Modülü -->
 													<tr>
 														<td rowspan="5"><span class="badge bg-info text-light">Teklif</span></td>
 														<td>Teklif Ana Menü (ID: 1500)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1500[]" value="1" <?php if(isset($grup_yetkileri[1500]) && in_array(1, $grup_yetkileri[1500])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Teklif Hazırla (ID: 1510)</td>
@@ -610,27 +643,27 @@
 													<tr>
 														<td>Verilen Teklif (ID: 1511)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1511[]" value="1" <?php if(isset($grup_yetkileri[1511]) && in_array(1, $grup_yetkileri[1511])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Tüm Teklifler (ID: 1512)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1512[]" value="1" <?php if(isset($grup_yetkileri[1512]) && in_array(1, $grup_yetkileri[1512])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Teklif Listesi (ID: 1520)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1520[]" value="1" <?php if(isset($grup_yetkileri[1520]) && in_array(1, $grup_yetkileri[1520])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Teklif Ayarları (ID: 1530)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1530[]" value="1" <?php if(isset($grup_yetkileri[1530]) && in_array(1, $grup_yetkileri[1530])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>													</tr>													<!-- Prim Modülü -->
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>													</tr>													<!-- Prim Modülü -->
 													<tr>
 														<td rowspan="4"><span class="badge bg-success text-light">Prim</span></td>
 														<td>Prim Ana Menü (ID: 1700)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1700[]" value="1" <?php if(isset($grup_yetkileri[1700]) && in_array(1, $grup_yetkileri[1700])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Prim Hazırla (ID: 1710)</td>
@@ -642,17 +675,17 @@
 													<tr>
 														<td>Prim Listesi (ID: 1720)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1720[]" value="1" <?php if(isset($grup_yetkileri[1720]) && in_array(1, $grup_yetkileri[1720])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Prim Ayarları (ID: 1730)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1730[]" value="1" <?php if(isset($grup_yetkileri[1730]) && in_array(1, $grup_yetkileri[1730])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>													<tr>
-														<td rowspan="4"><span class="badge bg-danger text-light">İllegal</span></td>
+														<td rowspan="5"><span class="badge bg-danger text-light">İllegal</span></td>
 														<td>İllegal Ana Menü (ID: 1600)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1600[]" value="1" <?php if(isset($grup_yetkileri[1600]) && in_array(1, $grup_yetkileri[1600])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>İllegal Hazırla (ID: 1610)</td>
@@ -664,11 +697,23 @@
 													<tr>
 														<td>İllegal Listesi (ID: 1620)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1620[]" value="1" <?php if(isset($grup_yetkileri[1620]) && in_array(1, $grup_yetkileri[1620])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
-													</tr>													<tr>
+														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1620[]" value="2" <?php if(isset($grup_yetkileri[1620]) && in_array(2, $grup_yetkileri[1620])) echo "checked"; ?>></div></td>
+														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1620[]" value="3" <?php if(isset($grup_yetkileri[1620]) && in_array(3, $grup_yetkileri[1620])) echo "checked"; ?>></div></td>
+														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1620[]" value="4" <?php if(isset($grup_yetkileri[1620]) && in_array(4, $grup_yetkileri[1620])) echo "checked"; ?>></div></td>
+														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1620[]" value="5" <?php if(isset($grup_yetkileri[1620]) && in_array(5, $grup_yetkileri[1620])) echo "checked"; ?>></div></td>
+													</tr>
+													<tr>
+														<td>İllegal İşlemler (ID: 1625)</td>
+														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1625[]" value="1" <?php if(isset($grup_yetkileri[1625]) && in_array(1, $grup_yetkileri[1625])) echo "checked"; ?>></div></td>
+														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1625[]" value="2" <?php if(isset($grup_yetkileri[1625]) && in_array(2, $grup_yetkileri[1625])) echo "checked"; ?>></div></td>
+														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1625[]" value="3" <?php if(isset($grup_yetkileri[1625]) && in_array(3, $grup_yetkileri[1625])) echo "checked"; ?>></div></td>
+														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1625[]" value="4" <?php if(isset($grup_yetkileri[1625]) && in_array(4, $grup_yetkileri[1625])) echo "checked"; ?>></div></td>
+														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1625[]" value="5" <?php if(isset($grup_yetkileri[1625]) && in_array(5, $grup_yetkileri[1625])) echo "checked"; ?>></div></td>
+													</tr>
+													<tr>
 														<td>İllegal Ayarları (ID: 1630)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1630[]" value="1" <?php if(isset($grup_yetkileri[1630]) && in_array(1, $grup_yetkileri[1630])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 
 													<!-- Talepler Modülü -->
@@ -676,7 +721,7 @@
 														<td rowspan="2"><span class="badge bg-info text-light">Talepler</span></td>
 														<td>Talepler Ana Menü (ID: 1800)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_1800[]" value="1" <?php if(isset($grup_yetkileri[1800]) && in_array(1, $grup_yetkileri[1800])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Talep Oluştur (ID: 1810)</td>
@@ -690,7 +735,7 @@
 														<td rowspan="5"><span class="badge bg-primary text-light">Aktivasyon</span></td>
 														<td>Aktivasyon Ana Menü (ID: 900)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_900[]" value="1" <?php if(isset($grup_yetkileri[900]) && in_array(1, $grup_yetkileri[900])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>Digiturk Aktivasyon Oluştur (ID: 901)</td>
@@ -702,7 +747,7 @@
 													<tr>
 														<td>Aktivasyon Listesi (ID: 902)</td>
 														<td class="text-center"><div class="checkbox"><input type="checkbox" name="yetki_902[]" value="1" <?php if(isset($grup_yetkileri[902]) && in_array(1, $grup_yetkileri[902])) echo "checked"; ?>></div></td>
-														<td></td><td></td><td></td>
+														<td></td><td></td><td></td><td></td><td></td><td></td><td></td>
 													</tr>
 													<tr>
 														<td>S SPORT Aktivasyon Oluştur (ID: 903)</td>
@@ -767,3 +812,5 @@
 
 	</body>
 </html>
+
+

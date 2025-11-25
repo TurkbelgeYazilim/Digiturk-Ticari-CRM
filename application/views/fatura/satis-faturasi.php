@@ -1121,13 +1121,13 @@ $modulSorgula = modulSorgula($firma_ID, 1);
 
 															<th>Miktar</th>
 
-															<th>Birim Fiyat <span id="birimFiyatParaBirimi">(TL)</span>
+															<th>Birim Fiyat <span id="birimFiyatParaBirimi"></span>
 
 															</th>
 
 															<th>KDV (%)</th>
 
-															<th>Toplam</th>
+															<th>Toplam Fiyat</th>
 
 															<th>Kullanıcı Sayısı</th>
 
@@ -2808,25 +2808,23 @@ $modulSorgula = modulSorgula($firma_ID, 1);
 
 
 
-		items++;
+	items++;
 
-		counter.push(items);
+	counter.push(items);
 
-		var html = "<tr>";
+	var html = "<tr>";
 
-		html += "<td><input type='hidden' name='stokid[]' id='stokid" + items + "'><input type='text' class='form-control' name='stokadi[]' id='stokadi" + items + "' onblur='stokKontrol(this.id)' required> </td>";
+	html += "<td><input type='hidden' name='stokid[]' id='stokid" + items + "'><input type='text' class='form-control' name='stokadi[]' id='stokadi" + items + "' onblur='stokKontrol(this.id)'> </td>";
 
-		html += "<td style='display:none'><input type='text' class='form-control' name='stokkodu[]' id='stokkodu" + items + "'  onblur='stokKontrol(this.id)' required></td>";
+	html += "<td style='display:none'><input type='text' class='form-control' name='stokkodu[]' id='stokkodu" + items + "'  onblur='stokKontrol(this.id)'></td>";
 
-		// Barkod inputu kaldırıldı
+	// Barkod inputu kaldırıldı
 
-		html += "<td style='display:none'><select class='form-control' name='birim[]' id='birim" + items + "' required><?= $birimler ?></select></td>";
+	html += "<td style='display:none'><select class='form-control' name='birim[]' id='birim" + items + "'><?= $birimler ?></select></td>";
 
-		html += "<td><input type='number' step='0.1' class='form-control' autocomplete='off' name='miktar[]' id='miktar" + items + "' required='' style='width:175px;'></td>";
+	html += "<td><input type='number' step='0.1' class='form-control' autocomplete='off' name='miktar[]' id='miktar" + items + "' style='width:175px;'></td>";
 
-		html += "<td><input type='text' class='form-control' autocomplete='off' name='birimfiyat[]' id='birimfiyat" + items + "' required='' inputmode='decimal' pattern='[0-9.,]*'></td>";
-
-		/*html += "<td><input type='text' class='form-control' name='kdv[]' id='kdv"+items+"' readonly></td>";*/
+	html += "<td><input type='text' class='form-control' autocomplete='off' name='birimfiyat[]' id='birimfiyat" + items + "' inputmode='decimal' pattern='[0-9.,]*'></td>";		/*html += "<td><input type='text' class='form-control' name='kdv[]' id='kdv"+items+"' readonly></td>";*/
 
 		html += "<td><select class='form-control' name='kdv[]' id='kdv" + items + "' ><option value='0' >0</option><option value='1'>1</option><option value='8' selected>8</option><option value='10' selected>10</option><option value='18'>18</option><option value='20'>20</option></select></td>";
 
@@ -4008,31 +4006,137 @@ $modulSorgula = modulSorgula($firma_ID, 1);
 			hesapla();
 		});
 
-		// Form submit edildiğinde noktaları kaldır
+	// Form submit edildiğinde noktaları kaldır ve stok seçim kontrolü yap
 
-		$('form').on('submit', function() {
+	$('form').on('submit', function(e) {
 
-			$('input[name^="birimfiyat"]').each(function() {
+		// Stok seçim kontrolü - her satırda stokid dolu mu kontrol et
 
-				// Noktalı binlik ayırıcıları kaldır, sadece sayısal değeri bırak
+		var stokSecimHatasi = false;
 
-				let cleanValue = removeDotsFromNumber(this.value);
+		var hataliSatirlar = [];
+
+		var bosAlanlar = [];
+
+		
+
+		$('input[name^="stokadi"]').each(function() {
+
+			var id = this.id.match(/\d+/);
+
+			if (id && id[0]) {
+
+				var stokId = $('#stokid' + id[0]).val();
+
+				var stokAdi = $(this).val();
+
+				var miktar = $('#miktar' + id[0]).val();
+
+				var birimFiyat = $('#birimfiyat' + id[0]).val();
 
 				
 
-				// Boş değilse ve geçerli bir sayıysa ayarla
+				// Eğer stok adı dolu ama stokid boşsa, listeden seçim yapılmamış demektir
 
-				if (cleanValue && !isNaN(cleanValue)) {
+				if (stokAdi && stokAdi.trim() !== '' && (!stokId || stokId.trim() === '')) {
 
-					this.value = cleanValue;
+					stokSecimHatasi = true;
+
+					hataliSatirlar.push('Satır ' + id[0]);
+
+					$(this).css('border', '2px solid red');
+
+				} else {
+
+					$(this).css('border', '');
 
 				}
 
-			});
+				
+
+				// Zorunlu alanların dolu olup olmadığını kontrol et
+
+				if (stokAdi && stokAdi.trim() !== '') {
+
+					if (!miktar || miktar.trim() === '' || parseFloat(miktar) <= 0) {
+
+						bosAlanlar.push('Satır ' + id[0] + ' - Miktar');
+
+						$('#miktar' + id[0]).css('border', '2px solid red');
+
+					} else {
+
+						$('#miktar' + id[0]).css('border', '');
+
+					}
+
+					
+
+					if (!birimFiyat || birimFiyat.trim() === '') {
+
+						bosAlanlar.push('Satır ' + id[0] + ' - Birim Fiyat');
+
+						$('#birimfiyat' + id[0]).css('border', '2px solid red');
+
+					} else {
+
+						$('#birimfiyat' + id[0]).css('border', '');
+
+					}
+
+				}
+
+			}
 
 		});
+
 		
 
+		if (stokSecimHatasi) {
+
+			e.preventDefault();
+
+			toastr.error('Lütfen stok adı alanında listeden seçim yapınız. Hatalı satırlar: ' + hataliSatirlar.join(', '));
+
+			return false;
+
+		}
+
+		
+
+		if (bosAlanlar.length > 0) {
+
+			e.preventDefault();
+
+			toastr.error('Lütfen zorunlu alanları doldurunuz: ' + bosAlanlar.join(', '));
+
+			return false;
+
+		}
+
+		
+
+		// Birim fiyat formatını düzelt
+
+		$('input[name^="birimfiyat"]').each(function() {
+
+			// Noktalı binlik ayırıcıları kaldır, sadece sayısal değeri bırak
+
+			let cleanValue = removeDotsFromNumber(this.value);
+
+			
+
+			// Boş değilse ve geçerli bir sayıysa ayarla
+
+			if (cleanValue && !isNaN(cleanValue)) {
+
+				this.value = cleanValue;
+
+			}
+
+		});
+
+	});
 		// Sayfa yüklendiğinde mevcut değerleri formatla
 
 		$(document).ready(function() {

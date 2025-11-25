@@ -670,6 +670,8 @@
 
 															<option value="1" <?= ($filtre_durum === '1') ? 'selected' : '' ?>>Aktif</option>
 
+															<option value="2" <?= ($filtre_durum === '2') ? 'selected' : '' ?>>Teslim Edildi</option>
+
 															<option value="0" <?= ($filtre_durum === '0') ? 'selected' : '' ?>>İade Edildi</option>
 
 														</select>

@@ -524,9 +524,13 @@ $route['prim/telefon_search'] = 'prim/telefon_search';
 
 $route['illegal/illegal-tespit-olustur'] = 'illegal/illegal_tespit_olustur';
 
+$route['illegal/illegal-tespit-excel-yukle'] = 'illegal/illegal_tespit_excel_yukle';
+
 $route['illegal/illegal_cari_kaydet'] = 'illegal/illegal_cari_kaydet';
 
 $route['illegal/illegal-listele'] = 'illegal/illegal_listele';
+
+$route['illegal/illegal-islemler'] = 'illegal/illegal_islemler';
 
 $route['illegal/illegal-ayar'] = 'illegal/illegal_ayar';
 
@@ -540,11 +544,33 @@ $route['illegal/potansiyel_satis_ekle'] = 'illegal/potansiyel_satis_ekle';
 
 $route['illegal/sezonlar-listele'] = 'illegal/sezonlar_listele';
 
+$route['illegal/sezon-detay'] = 'illegal/sezon_detay';
+
 $route['illegal/sezon-ekle'] = 'illegal/sezon_ekle';
 
 $route['illegal/sezon-guncelle'] = 'illegal/sezon_guncelle';
 
 $route['illegal/sezon-sil'] = 'illegal/sezon_sil';
+
+$route['illegal/takimlar-listele'] = 'illegal/takimlar_listele';
+
+$route['illegal/takim-ekle'] = 'illegal/takim_ekle';
+
+$route['illegal/takim-guncelle'] = 'illegal/takim_guncelle';
+
+$route['illegal/takim-sil'] = 'illegal/takim_sil';
+
+$route['illegal/statuler-listele'] = 'illegal/statuler_listele';
+
+$route['illegal/get_statuler_for_select'] = 'illegal/get_statuler_for_select';
+
+$route['illegal/statu-detay'] = 'illegal/statu_detay';
+
+$route['illegal/statu-ekle'] = 'illegal/statu_ekle';
+
+$route['illegal/statu-guncelle'] = 'illegal/statu_guncelle';
+
+$route['illegal/statu-sil'] = 'illegal/statu_sil';
 
 $route['illegal/cari-gruplar-listele'] = 'illegal/cari_gruplar_listele';
 
@@ -571,6 +597,7 @@ $route['illegal/telefon_search'] = 'illegal/telefon_search';
 $route['muhasebe/onay-bekleyen-tahsilatlar'] = 'muhasebe/onayBekleyenTahsilatlar';
 
 $route['muhasebe/tahsilat-listesi'] = 'muhasebe/tahsilatListesi';
+$route['muhasebe/tahsilatListesiExcel'] = 'muhasebe/tahsilatListesiExcel';
 
 $route['muhasebe/tahsilat-onay/(:num)'] = 'muhasebe/tahsilatOnay/$1';
 

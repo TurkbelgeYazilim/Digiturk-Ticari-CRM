@@ -13,20 +13,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // POST verilerini al
-$raw_post = file_get_contents('php://input');
-$post_data = json_decode($raw_post, true);
+$satis_id = isset($_POST['satis_id']) ? intval($_POST['satis_id']) : 0;
+$cari_id = isset($_POST['cari_id']) ? intval($_POST['cari_id']) : 0;
+$sozlesme_tarihi = isset($_POST['sozlesme_tarihi']) ? $_POST['sozlesme_tarihi'] : null;
+$sozlesme_no = isset($_POST['sozlesme_no']) ? $_POST['sozlesme_no'] : null;
+$sozlesme_aciklama = isset($_POST['sozlesme_aciklama']) ? $_POST['sozlesme_aciklama'] : null;
 
-// Form data formatında da olabilir
-if (!$post_data) {
-    $post_data = $_POST;
+// Stok bilgileri JSON formatında geliyor
+$stok_bilgileri = [];
+if (isset($_POST['stok_bilgileri'])) {
+    $stok_bilgileri = json_decode($_POST['stok_bilgileri'], true);
+    if (!$stok_bilgileri) {
+        $stok_bilgileri = [];
+    }
 }
-
-$satis_id = isset($post_data['satis_id']) ? intval($post_data['satis_id']) : 0;
-$cari_id = isset($post_data['cari_id']) ? intval($post_data['cari_id']) : 0;
-$stok_bilgileri = isset($post_data['stok_bilgileri']) ? $post_data['stok_bilgileri'] : [];
-$sozlesme_tarihi = isset($post_data['sozlesme_tarihi']) ? $post_data['sozlesme_tarihi'] : null;
-$sozlesme_no = isset($post_data['sozlesme_no']) ? $post_data['sozlesme_no'] : null;
-$sozlesme_aciklama = isset($post_data['sozlesme_aciklama']) ? $post_data['sozlesme_aciklama'] : null;
 
 error_log("DEBUG: stok_kaydet called with satis_id: $satis_id, cari_id: $cari_id");
 error_log("DEBUG: stok_bilgileri: " . json_encode($stok_bilgileri));
@@ -161,6 +161,12 @@ try {
     $toplam_tutar_kdv_dahil = 0;
     $inserted_count = 0;
     
+    // Fatura dosya upload klasörünü oluştur
+    $upload_dir = 'uploads/faturalar/';
+    if (!file_exists($upload_dir)) {
+        mkdir($upload_dir, 0755, true);
+    }
+    
     // Yeni stok kayıtlarını ekle
     $insert_query = "
         INSERT INTO satisFaturasiStok (
@@ -174,8 +180,10 @@ try {
             satisStok_tevkifat_id,
             satisStok_satirIskonto,
             satisStok_indirimlifiyat,
-            satisStok_abonelikBitisTarihi
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            satisStok_abonelikBitisTarihi,
+            satisStok_faturaKesildi,
+            satisStok_faturaDosyasi
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ";
     
     $insert_stmt = $mysqli->prepare($insert_query);
@@ -183,7 +191,7 @@ try {
         throw new Exception("Insert prepare failed: " . $mysqli->error);
     }
     
-    foreach ($stok_bilgileri as $stok) {
+    foreach ($stok_bilgileri as $stok_index => $stok) {
         if (empty($stok['stok_adi']) || empty($stok['miktar']) || !isset($stok['birim_fiyat'])) {
             continue;
         }
@@ -193,8 +201,9 @@ try {
         $birim_fiyat_kdv_dahil = parseTurkishNumber($stok['birim_fiyat']); // KDV dahil fiyat
         $kdv_orani = parseTurkishNumber($stok['kdv_orani']);
         $abonelik_bitis_tarihi = !empty($stok['abonelik_bitis_tarihi']) ? $stok['abonelik_bitis_tarihi'] : null;
+        $fatura_kesildi = isset($stok['fatura_kesildi']) ? intval($stok['fatura_kesildi']) : 0;
         
-        error_log("DEBUG: Parsed values - miktar: $miktar, birim_fiyat: $birim_fiyat_kdv_dahil, kdv_orani: $kdv_orani");
+        error_log("DEBUG: Parsed values - miktar: $miktar, birim_fiyat: $birim_fiyat_kdv_dahil, kdv_orani: $kdv_orani, fatura_kesildi: $fatura_kesildi");
         
         // Toplam hesapla (KDV dahil fiyat olduğu için direkt çarp)
         $satir_toplam = $miktar * $birim_fiyat_kdv_dahil;
@@ -206,8 +215,36 @@ try {
         $satir_iskonto = 0;
         $indirimli_fiyat = $birim_fiyat_kdv_dahil; // Same as birim fiyat since no discount
         
+        // Fatura dosyası upload
+        $fatura_dosyasi_path = null;
+        $row_index = isset($stok['fatura_dosyasi_index']) ? $stok['fatura_dosyasi_index'] : $stok_index;
+        $file_key = 'fatura_dosyasi_' . $row_index;
+        
+        if ($fatura_kesildi == 1 && isset($_FILES[$file_key]) && $_FILES[$file_key]['error'] === UPLOAD_ERR_OK) {
+            $file_tmp = $_FILES[$file_key]['tmp_name'];
+            $file_name = $_FILES[$file_key]['name'];
+            $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+            
+            // Dosya tipi kontrolü
+            $allowed_types = ['pdf', 'jpg', 'jpeg', 'png'];
+            if (in_array($file_ext, $allowed_types)) {
+                // Benzersiz dosya adı oluştur
+                $new_file_name = 'fatura_' . $satis_id . '_' . $stok_id . '_' . time() . '.' . $file_ext;
+                $target_path = $upload_dir . $new_file_name;
+                
+                if (move_uploaded_file($file_tmp, $target_path)) {
+                    $fatura_dosyasi_path = $target_path;
+                    error_log("DEBUG: Fatura dosyası yüklendi: $target_path");
+                } else {
+                    error_log("ERROR: Fatura dosyası yüklenemedi: $target_path");
+                }
+            } else {
+                error_log("ERROR: Geçersiz dosya uzantısı: $file_ext");
+            }
+        }
+        
         // Veritabanına kaydet
-        $insert_stmt->bind_param("iidddddidds", 
+        $insert_stmt->bind_param("iidddddiiddis", 
             $satis_id, 
             $stok_id, 
             $miktar, 
@@ -218,7 +255,9 @@ try {
             $tevkifat_id,
             $satir_iskonto,
             $indirimli_fiyat,
-            $abonelik_bitis_tarihi
+            $abonelik_bitis_tarihi,
+            $fatura_kesildi,
+            $fatura_dosyasi_path
         );
 
         if (!$insert_stmt->execute()) {

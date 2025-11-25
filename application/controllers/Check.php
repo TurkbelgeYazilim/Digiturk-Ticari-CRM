@@ -195,18 +195,39 @@ class Check extends CI_Controller {
 
 
 
-				session("w","login",true);
-				session("w","login_info",$query1);
-				logekle(54,5);
-
-				$uniqID=uniqid();
-				$_SESSION["kullanici_oturumDurum"]=$uniqID;
-				$dataOturum["kullanici_oturumDurum"] = $uniqID;
-				$this->vt->update('kullanicilar', array('kullanici_id'=>$kullaniciID), $dataOturum);
+			session("w","login",true);
+			session("w","login_info",$query1);
+			
+			// Kullanıcının grup yetkilerini session'a kaydet
+			$yetkiler = [];
+			$grup_id = isset($query1->grup_id) ? $query1->grup_id : null;
+			
+			if($grup_id) {
+				// Grup yetkilerini getir
+				$yetkilerQ = "SELECT kgy_modul, kgy_yetki FROM kullanici_grubu_yetkisi WHERE kgy_grupID = '$grup_id' ORDER BY kgy_modul, kgy_yetki";
+				$yetkilerResult = $this->db->query($yetkilerQ)->result();
 				
-				redirect('');
+				foreach($yetkilerResult as $yetki) {
+					$modul = (int)$yetki->kgy_modul;
+					$kod = (int)$yetki->kgy_yetki;
+					
+					if(!isset($yetkiler[$modul])) {
+						$yetkiler[$modul] = [];
+					}
+					$yetkiler[$modul][] = $kod;
+				}
+			}
+			
+			session("w", "yetkiler", $yetkiler);
+			
+			logekle(54,5);
 
-			}else{
+			$uniqID=uniqid();
+			$_SESSION["kullanici_oturumDurum"]=$uniqID;
+			$dataOturum["kullanici_oturumDurum"] = $uniqID;
+			$this->vt->update('kullanicilar', array('kullanici_id'=>$kullaniciID), $dataOturum);
+			
+			redirect('');			}else{
 
 				$this->session->set_flashdata('login_fail_inactive','ok');
 
